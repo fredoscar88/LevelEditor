@@ -6,5 +6,6 @@
 	<classpathentry combineaccessrules="false" kind="src" path="/Platty"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/RaineCloud"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/ViseUtilities"/>
+	<classpathentry kind="lib" path="res"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
