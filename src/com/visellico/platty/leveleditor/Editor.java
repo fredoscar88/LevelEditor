@@ -45,6 +45,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	private List<Layer> layerList = new ArrayList<>();
 	
 	public Screen screen;
+	public int screenScrollX;
+	public int screenScrollY;
 	public UIPanel editorPanel;
 	public UIPanel propertyPanel;
 	
@@ -60,6 +62,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
 		screen.setOffset(-screen.width / 2, -screen.height/2);
+		
+		//@devnote Add screen and panels to stack thing, in Screen, propPan, editPan order.
 		
 		key = new Keyboard(this);
 		mouse = new Mouse(this);
@@ -158,15 +162,18 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		g.setColor(new Color(0xFF00FF));
 		g.fillRect(0, 0, width, height);
 		
-		screen.clear(0x7F7F7F);
-		screen.renderPoint(0, 0, 0x0);
-		screen.renderLine(50, 10, 100, 100, 0xAAEEAA);
+		screen.clear(0x202020);
+		screen.renderInvertedPoint(screenScrollX, screenScrollY);
 		
 		//render screen/uipanels
 		for (int i = 0; i < screenRenderList.size(); i++)
 			screenRenderList.get(i).render(screen);
 		
 		screen.pack();
+		
+		editorPanel.render(g);
+		propertyPanel.render(g);
+		
 		g.drawImage(screen.image, 200, 0, screen.width * screen.scale, screen.height * screen.scale, null);
 		
 		bs.show();
