@@ -1,13 +1,17 @@
 package com.visellico.platty.leveleditor.Level;
 
 import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import com.farr.Events.Event;
 import com.visellico.graphics.Screen;
 import com.visellico.platty.Assets;
+import com.visellico.platty.level.LevelType;
 import com.visellico.platty.leveleditor.Layer;
 import com.visellico.platty.leveleditor.Renderable;
+import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
 
 /**
  * Container for all of the terrain/objects situated inside of a Platty level.
@@ -19,20 +23,27 @@ public class Level implements Renderable {
 	
 	public static final int MINIMUM_WIDTH = 500;
 	public static final int MINIMUM_HEIGHT = 200;
-	public static final String DEFAULT_LEVEL_TYPE = "Fields";
+	public static final String DEFAULT_LEVEL_TYPE = "Fields";	
 	
 	public static String[] defaultLevelTypes;
 	public static String[] customLevelTypes;
 	
+	
+	public LevelType levelType;
+	public List<LevelObject> levelObjects = new ArrayList<>();
+	public LevelObject selectedLevelObject = null;
+	
+	
 	//Load into memory the available level types
 	static {
-		System.out.println("Loading Level types");
+		System.out.println("Loading Level types: Default");
 		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
+		System.out.println("Loading Level types: Custom");
 		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
 	}
 	
 	public String name;
-	public String levelType;
+	public String levelTypeName;
 	
 	public int width, height;
 	
@@ -42,7 +53,12 @@ public class Level implements Renderable {
 	public Level() {
 		width = MINIMUM_WIDTH;
 		height = MINIMUM_HEIGHT;
-		levelType = DEFAULT_LEVEL_TYPE;
+		levelTypeName = DEFAULT_LEVEL_TYPE;
+		try {
+			levelType = new LevelType(levelTypeName, true);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 	}
 	
@@ -57,6 +73,20 @@ public class Level implements Renderable {
 		//Set member varuabkes
 		
 		return l;
+	}
+	
+	public void requestSelected(LevelObject lo) {
+		if (lo.isSelected) return;
+		deselect();
+		lo.isSelected = true;
+		selectedLevelObject = lo;
+	}
+	
+	public void deselect() {
+		for (LevelObject lo : levelObjects) {
+			lo.isSelected = false;
+		}
+		selectedLevelObject = null;
 	}
 	
 	/*
@@ -77,7 +107,8 @@ public class Level implements Renderable {
 	}
 	
 	public void render(Screen screen) {
-		
+		screen.renderPoint(-10, -10, 0x0);
+		System.out.println("Hey");
 	}
 
 
