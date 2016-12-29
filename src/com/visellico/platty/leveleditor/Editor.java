@@ -4,6 +4,7 @@ import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
 import java.util.List;
@@ -11,14 +12,29 @@ import java.util.List;
 import javax.swing.JFrame;
 
 import com.farr.Events.Event;
+import com.farr.Events.EventDispatcher;
 import com.farr.Events.EventListener;
+import com.farr.Events.types.MouseMovedEvent;
+import com.farr.Events.types.MousePressedEvent;
+import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
 import com.visellico.graphics.ui.UIPanel;
+import com.visellico.graphics.ui.UIPromptOption;
 import com.visellico.input.Focus;
 import com.visellico.input.Keyboard;
 import com.visellico.input.Mouse;
+import com.visellico.platty.Assets;
 import com.visellico.platty.leveleditor.Level.Level;
+import com.visellico.util.MathUtils;
+import com.visellico.util.Vector2i;
 
+/**
+ * <p>Editor object for creating/editing levels.</p>
+ * This class itself is not very object oriented, I blame my inexperience, and legacy stuff like UI panels and the conflictual
+ * layer hierarchies that make it oh so fun to render and distribute events. All of the other classes however should look okay.
+ * @author Henry
+ *
+ */
 public class Editor extends Canvas implements Runnable, EventListener {
 
 	//This is to shut up eclipse warnings
@@ -41,15 +57,29 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	public Mouse mouse;
 	public Focus focus;
 	
+	public UIPromptOption currentPrompt;
+	public Thread promptThread;
+	
 	private List<Renderable> screenRenderList = new ArrayList<>();
-	private List<Layer> layerList = new ArrayList<>();
+	private List<LayerLE> layerList = new ArrayList<>();
+	private List<com.farr.Events.Layer> layerListClassic = new ArrayList<>();
 	
 	public Screen screen;
+	public int screenCoordX = 200;
+	public int screenCoordY = 0;
 	public int screenScrollX;
 	public int screenScrollY;
 	public UIPanel editorPanel;
 	public UIPanel propertyPanel;
 	
+	//Mouse drag vars
+	boolean dragging = false;
+	int mouseDragXStart;
+	int mouseDragYStart;
+	int screenScrollStartX;
+	int screenScrollStartY;
+	int curMouseX;
+	int curMouseY;
 	
 	public Level level;	//Level being edited. Should be created by deserializing a file, or as a new blank slate.
 	
@@ -63,7 +93,37 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
 		screen.setOffset(-screen.width / 2, -screen.height/2);
 		
+		editorPanel = new UIPanel(new Vector2i(0,0), new Vector2i(200, height));
+		editorPanel.setColor(0xE8BA55);
+		propertyPanel = new UIPanel(new Vector2i(200, height - 100), new Vector2i (width - 200, 100));
+		propertyPanel.setColor(0x55BAE8);
 		//@devnote Add screen and panels to stack thing, in Screen, propPan, editPan order.
+		
+		//@devnote TEMPORARY LOAD BLANK LEVEL
+		
+		UIPromptOption startup = new UIPromptOption(width, height, "What if.. ", "New Level");//, "Load Level");
+		//@devnote Loading levels is disabled for now until I work on typed input, and/or level browser
+		
+		startup.init(layerListClassic);
+		currentPrompt = startup;
+		promptThread = new Thread(() -> {
+			System.out.println("uh");
+			currentPrompt.value = -1;
+			int response = currentPrompt.awaitResponse();
+			System.out.println("uh huh");
+			switch (response) {
+			case 0: System.out.println("whatever"); level = new Level(); break;
+			case 1: level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl"); break;
+
+			}
+			currentPrompt = null;
+		}, "I BETTER NOT BE RUNNING LONG");
+		promptThread.start();
+		
+//		level = new Level();
+//		level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl");
+//		save(level);
+		//BLAAH
 		
 		key = new Keyboard(this);
 		mouse = new Mouse(this);
@@ -71,7 +131,22 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 		addKeyListener(key);
 		addMouseListener(mouse);
+		addMouseMotionListener(mouse);
+		addMouseWheelListener(mouse);
 		addFocusListener(focus);
+		
+	}
+	
+	public static void save(Level level) {
+		level.sort();
+		
+		String directory = Assets.pathToRes + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels);
+		System.out.println(directory);
+		
+		level.serialize(directory);
+	}
+	
+	public static void loadPrompt() {
 		
 	}
 
@@ -143,6 +218,13 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	
 	public void update() {
 		
+//		if (layerListClassic.size() > 0) {
+//			layerListClassic.get(0).update();
+//			if (currentPrompt.value != -1)
+//				currentPrompt.remove();
+//			return;
+//		}
+		
 		//Updates top to bottom
 		for (int i = layerList.size() - 1; i >= 0; i--) {
 			layerList.get(i).update();
@@ -162,19 +244,31 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		g.setColor(new Color(0xFF00FF));
 		g.fillRect(0, 0, width, height);
 		
-		screen.clear(0x202020);
-		screen.renderInvertedPoint(screenScrollX, screenScrollY);
+		screen.setOffset(screenScrollX - screen.width / 2, Screen.getScreenY(screenScrollY) - screen.height / 2);
 		
-		//render screen/uipanels
-		for (int i = 0; i < screenRenderList.size(); i++)
-			screenRenderList.get(i).render(screen);
+		screen.clear(0x0);
+		if (level != null) 
+			level.render(screen);
+		screen.renderInvertedPoint(screenScrollX, screenScrollY);
+		screen.renderInvertedPoint(curMouseX, curMouseY);
 		
 		screen.pack();
 		
+		//UIPanels and screen can't be rendered traditionally. Screen isn't even a layer, and the layer typiarchy for panels (draw to graphics g) is incompatible 
+		//	with the typiarchy for everything that draws to the screen, so we render them out here like dis.
 		editorPanel.render(g);
 		propertyPanel.render(g);
 		
-		g.drawImage(screen.image, 200, 0, screen.width * screen.scale, screen.height * screen.scale, null);
+		g.drawImage(screen.image, screenCoordX, screenCoordY, screen.width * screen.scale, screen.height * screen.scale, null);
+		
+		//render layers. This is going to be interesting because screen is not technically a layer, but stuff it displays.. IS.
+		//	hoo boy
+		for (int i = 0; i < screenRenderList.size(); i++)
+			screenRenderList.get(i).render(screen);
+		
+		if (currentPrompt != null) {
+			currentPrompt.render(g);
+		}
 		
 		bs.show();
 		g.dispose();
@@ -182,19 +276,118 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	}
 	
 	public void onEvent(Event event) {
+		
+		if (currentPrompt != null) {
+			currentPrompt.onEvent(event);
+			return;
+		}
+		
+		editorPanel.onEvent(event);
+		propertyPanel.onEvent(event);
+		
+		
+		EventDispatcher dispatcher = new EventDispatcher(event);
+		
 		//Sends events top to bottom
 		for (int i = layerList.size() - 1; i >= 0; i--) {
 			layerList.get(i).onEvent(event);
 		}
+		
+		dispatcher.dispatch(Event.Type.MOUSE_PRESSED, (Event e) -> onMousePress((MousePressedEvent) e));
+		dispatcher.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) e));
+		dispatcher.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) e));
+		
 	}
 	
-	public void addLayer(Layer l) {
+	/**
+	 * This even fires when we don't click on the panels to the side. So the screen basically which Im starting to wish I'd made into a layer.
+	 * @param e
+	 * @return
+	 */
+	public boolean onMousePress(MousePressedEvent e) {
+		
+		int mouseButton = e.getButton();
+		
+		if (mouseButton == MouseEvent.BUTTON3) {
+			
+			//Mouse values, divided into the screen scale, and translated onto the screen region, then set to screen coords
+			screenScrollStartX = screenScrollX;
+			screenScrollStartY = screenScrollY;
+			mouseDragXStart = mouseXToScreenX(e.getX());
+			mouseDragYStart = mouseYToScreenY(e.getY());
+			
+			dragging = true;
+			return true;
+		}
+		
+		return false;
+	}
+	
+	public boolean onMouseRelease(MouseReleasedEvent e) {
+		
+//		level.sort();
+		
+		int mouseButton = e.getButton();
+		
+		if (mouseButton == MouseEvent.BUTTON3) {
+			screenScrollStartX = screenScrollX;
+			screenScrollStartY = screenScrollY;
+			dragging = false;
+			return true;
+		}
+		
+		return false;
+	}
+	
+	//Currently ignoring the code I wrote for handling drags
+	public boolean onMouseMove(MouseMovedEvent e) {
+		
+		curMouseX = mouseXToScreenX(e.getX());
+		curMouseY = mouseYToScreenY(e.getY());
+		
+		int deltaX = (mouseDragXStart - curMouseX);
+		int deltaY = (mouseDragYStart - curMouseY);
+		
+		curMouseX += screenScrollX;
+		curMouseY += screenScrollY;
+		
+		if (dragging) {
+			screenScrollX = MathUtils.clamp(screenScrollStartX + deltaX, 0, level.width);
+			screenScrollY =  MathUtils.clamp(screenScrollStartY + deltaY, 0, level.height);
+			
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * Gets the x coordinate of the pixel on the screen
+	 * To get the coordinate of the pixel in the level environment, add screenScrollX
+	 * @param mouseX
+	 * @return
+	 */
+	public int mouseXToScreenX(int mouseX) {
+		return ((mouseX/screen.scale - (screenCoordX / screen.scale)) - screen.width / 2);// + screenScrollStartX;
+	}
+	
+	/**
+	 * Gets the y coordinate of the pixel in the screen
+	 * To get the coordinate of the pixel in the level environment, add screenScrollX
+	 * @param mouseX
+	 * @return
+	 */
+	public int mouseYToScreenY(int mouseY) {
+		//Important note, this ptus Y into screen stuffs and disregards all else
+		return Screen.getScreenY((mouseY/screen.scale - (screenCoordY / screen.scale)) - screen.height / 2);// + screenScrollStartY;
+	}
+	
+	public void addLayer(LayerLE l) {
 		layerList.add(l);
 		if (l instanceof Renderable) screenRenderList.add((Renderable) l);
 		l.init(layerList);
 	}
 
-	public void removeLayer(Layer l) {
+	public void removeLayer(LayerLE l) {
 		layerList.remove(l);
 	}
 	
@@ -216,8 +409,6 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		editor.frame.setVisible(true);
 		
 		editor.start();
-		
-		new Level();
 		
 	}
 

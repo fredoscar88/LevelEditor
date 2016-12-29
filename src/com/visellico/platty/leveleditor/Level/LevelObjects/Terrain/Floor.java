@@ -1,9 +1,13 @@
 package com.visellico.platty.leveleditor.Level.LevelObjects.Terrain;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+
 import com.visellico.graphics.Screen;
 import com.visellico.graphics.Sprite;
-import com.visellico.platty.level.Level;
-import com.visellico.rainecloud.serialization.RCField;
+import com.visellico.platty.leveleditor.Level.Level;
 import com.visellico.rainecloud.serialization.RCObject;
 
 /**
@@ -19,7 +23,12 @@ public class Floor extends Terrain {
 	public static Sprite spriteTrimLeft;
 	public static Sprite spriteTrimRight;
 	
-	public static final int DEFAULT_WIDTH = 8;
+	public static final int DEFAULT_WIDTH = 15;
+	public static final String FLOOR_TYPE_NAME = "floor";
+	
+//	public static Comparator<Floor> floorComparator;
+	
+	
 	
 	/**
 	 * Constructs a new floor with default width and height set to y
@@ -29,10 +38,16 @@ public class Floor extends Terrain {
 	 */
 	public Floor(int x, int y) {
 	
+		this.serialName = FLOOR_TYPE_NAME;
+		
 		this.x = x;
 		this.y = y;
 		this.width = DEFAULT_WIDTH;
 		this.height = y;
+		
+	}
+	
+	private Floor() {
 		
 	}
 	
@@ -65,19 +80,19 @@ public class Floor extends Terrain {
 	 * My thinking is that. like with serializing, all of the important configuration data is
 	 * specific to Terrain and not all of its subclasses. Perhaps have the deserialize </p>
 	 */
-	public Floor deserialize(RCObject objFloor) {
+	public static Floor deserializeFloor(RCObject objFloor) {
 		
-//		int x, y, width, height;
-//		x = objFloor.findField("x").getInt();
-//		y = objFloor.findField("y").getInt();
-//		width = objFloor.findField("width").getInt();
-//		height = objFloor.findField("height").getInt();
+		int x, y, width, height;
+		x = objFloor.findField("x").getInt();
+		y = objFloor.findField("y").getInt();
+		width = objFloor.findField("width").getInt();
+		height = objFloor.findField("height").getInt();
 //		
-//		Floor f = new Floor(x, y);
-//		f.width = width;
-//		f.height = height;	//MUST be same as y
+		Floor f = new Floor(x, y);
+		f.width = width;
+		f.height = height;	//MUST be same as y
 		
-		return (Floor) super.deserialize(objFloor);
+		return f;
 	}
 	
 	public void render(Screen screen) {

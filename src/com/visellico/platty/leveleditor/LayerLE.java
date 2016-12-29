@@ -10,12 +10,12 @@ import com.farr.Events.Event;
  * @author Henry
  *
  */
-public interface Layer {
+public interface LayerLE {
 	
 	public void update();
 
 	public void onEvent(Event e);
 	
-	public void init(List<Layer> l);
+	public void init(List<LayerLE> l);
 	
 }
