@@ -46,7 +46,10 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	private JFrame frame;
 	private static final String TITLE = "Platty the Platformer | Level Editor";
 	private static final String VERSION = "dev 0.0";
-
+	private java.awt.List listDefaultLevelTypes;
+	private java.awt.List listCustomLevelTypes;
+	
+	
 	
 	public static Editor editor;
 	public int width = 1600;
@@ -81,14 +84,21 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	int curMouseX;
 	int curMouseY;
 	
-	public Level level;	//Level being edited. Should be created by deserializing a file, or as a new blank slate.
+	public volatile Level level;	//Level being edited. Should be created by deserializing a file, or as a new blank slate.
 	
 	public Editor() {
+		
+		Level.initialize();
 		
 		Dimension size = new Dimension(width, height);
 		setPreferredSize(size);
 		
 		frame = new JFrame();
+		listDefaultLevelTypes = new java.awt.List();
+		listCustomLevelTypes = new java.awt.List();
+		
+		frame.add(listDefaultLevelTypes);
+		
 		
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
 		screen.setOffset(-screen.width / 2, -screen.height/2);
@@ -101,24 +111,27 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 		//@devnote TEMPORARY LOAD BLANK LEVEL
 		
-		UIPromptOption startup = new UIPromptOption(width, height, "What if.. ", "New Level");//, "Load Level");
+		UIPromptOption startup = new UIPromptOption(width, height, "Select one", "New Level", "Load Level");
 		//@devnote Loading levels is disabled for now until I work on typed input, and/or level browser
 		
 		startup.init(layerListClassic);
 		currentPrompt = startup;
 		promptThread = new Thread(() -> {
-			System.out.println("uh");
 			currentPrompt.value = -1;
 			int response = currentPrompt.awaitResponse();
-			System.out.println("uh huh");
 			switch (response) {
-			case 0: System.out.println("whatever"); level = new Level(); break;
+			case 0: level = new Level(); break;
 			case 1: level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl"); break;
 
 			}
 			currentPrompt = null;
 		}, "I BETTER NOT BE RUNNING LONG");
 		promptThread.start();
+		
+		for (String lType : Level.defaultLevelTypes) {
+			listDefaultLevelTypes.add(lType);
+		}
+		System.out.println(listDefaultLevelTypes.isVisible());
 		
 //		level = new Level();
 //		level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl");
@@ -144,10 +157,6 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		System.out.println(directory);
 		
 		level.serialize(directory);
-	}
-	
-	public static void loadPrompt() {
-		
 	}
 
 	public void start() {
@@ -224,6 +233,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 //				currentPrompt.remove();
 //			return;
 //		}
+		
 		
 		//Updates top to bottom
 		for (int i = layerList.size() - 1; i >= 0; i--) {

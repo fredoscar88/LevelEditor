@@ -83,6 +83,12 @@ public class Terrain extends LevelObject {
 //		
 //	}
 	
+	
+	//Small note, I may want to replace this with if statement conditionals, i,e if 01 < 02 return -1 or whatever, instead of this subtraction method.
+	//	I readthat it was more of a "trick" but, Im not sure what that is supposed to mean.
+	//	Note: returns negative if the first object is less than the second,
+	//	0 if they're the same,
+	//	positive if the first one is greater. I reversed the subtraction order because I want it to do the ordering in reverse (high to low).
 	public static void sort(List<Terrain> list) {
 		
 		Collections.sort(list, (o1, o2) -> {return o2.height - o1.height;});	//new HeightComparator()

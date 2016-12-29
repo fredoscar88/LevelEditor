@@ -29,8 +29,8 @@ public class Level implements Renderable {
 	public static final int MINIMUM_HEIGHT = 250;
 	public static final String DEFAULT_LEVEL_TYPE = "Fields";	
 	
-	public static String[] defaultLevelTypes;
-	public static String[] customLevelTypes;
+	public static List<String> defaultLevelTypes;
+	public static List<String> customLevelTypes;
 	
 	
 	public LevelType levelType;
@@ -43,12 +43,12 @@ public class Level implements Renderable {
 	
 	
 	//Load into memory the available level types
-	static {
-		System.out.println("Loading Level types: Default");
-		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
-		System.out.println("Loading Level types: Custom");
-		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
-	}
+//	static {
+//		System.out.println("Loading Level types: Default");
+//		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
+//		System.out.println("Loading Level types: Custom");
+//		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
+//	}
 	
 	public String name;
 	public String levelTypeName;
@@ -188,15 +188,14 @@ public class Level implements Renderable {
 	 * Loads the names of each directory inside the default, and custom, level type directories into memory,
 	 * in the defaultLEvelTypes list and customLevelTypes list respectively.
 	 */
-	private static void loadLevelTypes(String parentDirectoryPath, String[] loc) {
+	private static void loadLevelTypes(String parentDirectoryPath, List<String> loc) {
 		
 		File parentDirectory = new File(parentDirectoryPath);
 		String[] fileNames = parentDirectory.list();
-		loc = new String[fileNames.length];
 		
 		for (int i = 0; i < fileNames.length; i++) {
-			loc[i] = fileNames[i];
-			System.out.println(loc[i]);
+			loc.add(fileNames[i]);// = fileNames[i];
+			System.out.println(loc.get(i));
 		}
 	}
 	
@@ -245,6 +244,16 @@ public class Level implements Renderable {
 		
 	}
 
-	
+	public static void initialize() {
+		
+		defaultLevelTypes = new ArrayList<>();
+		customLevelTypes = new ArrayList<>();
+		
+		System.out.println("Loading Level types: Default");
+		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
+		System.out.println("Loading Level types: Custom");
+		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
+		System.out.println(defaultLevelTypes);
+	}
 	
 }
