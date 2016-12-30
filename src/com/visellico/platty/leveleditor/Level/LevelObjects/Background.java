@@ -1,4 +1,4 @@
-package com.visellico.platty.leveleditor.Level;
+package com.visellico.platty.leveleditor.Level.LevelObjects;
 
 import java.util.List;
 
@@ -6,7 +6,7 @@ import com.farr.Events.Event;
 import com.visellico.graphics.Screen;
 import com.visellico.graphics.Sprite;
 import com.visellico.platty.leveleditor.LayerLE;
-import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
+import com.visellico.platty.leveleditor.Level.Level;
 import com.visellico.rainecloud.serialization.RCObject;
 
 public class Background extends LevelObject {

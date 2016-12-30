@@ -11,8 +11,8 @@ import com.visellico.platty.Assets;
 import com.visellico.platty.level.LevelType;
 import com.visellico.platty.leveleditor.LayerLE;
 import com.visellico.platty.leveleditor.Renderable;
+import com.visellico.platty.leveleditor.Level.LevelObjects.Background;
 import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
-import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Floor;
 import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Terrain;
 import com.visellico.rainecloud.serialization.RCDatabase;
 import com.visellico.rainecloud.serialization.RCObject;
@@ -253,7 +253,9 @@ public class Level implements Renderable {
 		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
 		System.out.println("Loading Level types: Custom");
 		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
+		System.out.println("Debug from Level.initialize()");
 		System.out.println(defaultLevelTypes);
+		System.out.println(customLevelTypes);
 	}
 	
 }

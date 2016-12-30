@@ -3,6 +3,7 @@ package com.visellico.platty.leveleditor;
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferStrategy;
@@ -18,8 +19,10 @@ import com.farr.Events.types.MouseMovedEvent;
 import com.farr.Events.types.MousePressedEvent;
 import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
+import com.visellico.graphics.ui.UILabel;
 import com.visellico.graphics.ui.UIPanel;
 import com.visellico.graphics.ui.UIPromptOption;
+import com.visellico.graphics.ui.UIScrollList;
 import com.visellico.input.Focus;
 import com.visellico.input.Keyboard;
 import com.visellico.input.Mouse;
@@ -46,10 +49,10 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	private JFrame frame;
 	private static final String TITLE = "Platty the Platformer | Level Editor";
 	private static final String VERSION = "dev 0.0";
-	private java.awt.List listDefaultLevelTypes;
-	private java.awt.List listCustomLevelTypes;
-	
-	
+//	private java.awt.List listDefaultLevelTypes;
+//	private java.awt.List listCustomLevelTypes;
+	private UIScrollList listDefaultLevelTypes;
+	private UIScrollList listCustomLevelTypes;
 	
 	public static Editor editor;
 	public int width = 1600;
@@ -94,10 +97,9 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		setPreferredSize(size);
 		
 		frame = new JFrame();
-		listDefaultLevelTypes = new java.awt.List();
-		listCustomLevelTypes = new java.awt.List();
 		
-		frame.add(listDefaultLevelTypes);
+		
+//		frame.add(listDefaultLevelTypes);
 		
 		
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
@@ -109,6 +111,13 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		propertyPanel.setColor(0x55BAE8);
 		//@devnote Add screen and panels to stack thing, in Screen, propPan, editPan order.
 		
+		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,150));
+		listDefaultLevelTypes.setColor(0x202020);
+		listCustomLevelTypes = new UIScrollList(new Vector2i(10,235), new Vector2i(180,150));
+		listCustomLevelTypes.setColor(0x202020);
+		
+		editorPanel.add(listDefaultLevelTypes);
+		editorPanel.add(listCustomLevelTypes);
 		//@devnote TEMPORARY LOAD BLANK LEVEL
 		
 		UIPromptOption startup = new UIPromptOption(width, height, "Select one", "New Level", "Load Level");
@@ -128,10 +137,13 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		}, "I BETTER NOT BE RUNNING LONG");
 		promptThread.start();
 		
+		Font font = new Font("Times New Roman", Font.PLAIN, 18);
 		for (String lType : Level.defaultLevelTypes) {
-			listDefaultLevelTypes.add(lType);
+			listDefaultLevelTypes.add(new UILabel(new Vector2i(0,0), lType, font).setYPaddingOffset(2).setColor(Color.black));
 		}
-		System.out.println(listDefaultLevelTypes.isVisible());
+		for (String lType : Level.customLevelTypes) {
+			listCustomLevelTypes.add(new UILabel(new Vector2i(0,0), lType, font).setYPaddingOffset(2).setColor(Color.black));
+		}
 		
 //		level = new Level();
 //		level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl");
@@ -233,7 +245,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 //				currentPrompt.remove();
 //			return;
 //		}
-		
+		editorPanel.update();
 		
 		//Updates top to bottom
 		for (int i = layerList.size() - 1; i >= 0; i--) {
