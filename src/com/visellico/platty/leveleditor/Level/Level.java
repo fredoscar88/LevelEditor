@@ -8,6 +8,7 @@ import java.util.List;
 import com.farr.Events.Event;
 import com.visellico.graphics.Screen;
 import com.visellico.platty.Assets;
+import com.visellico.platty.level.Addable;
 import com.visellico.platty.level.LevelType;
 import com.visellico.platty.leveleditor.LayerLE;
 import com.visellico.platty.leveleditor.Renderable;
@@ -15,7 +16,10 @@ import com.visellico.platty.leveleditor.Level.LevelObjects.Background;
 import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
 import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Terrain;
 import com.visellico.rainecloud.serialization.RCDatabase;
+import com.visellico.rainecloud.serialization.RCField;
 import com.visellico.rainecloud.serialization.RCObject;
+import com.visellico.rainecloud.serialization.RCString;
+import com.visellico.util.MathUtils;
 
 /**
  * Container for all of the terrain/objects situated inside of a Platty level.
@@ -33,9 +37,9 @@ public class Level implements Renderable {
 	public static List<String> customLevelTypes;
 	
 	
-	public LevelType levelType;
+	public volatile LevelType levelType;
 	public boolean isDefault;
-	public List<LevelObject> levelObjects = new ArrayList<>();
+	public volatile List<LevelObject> levelObjects = new ArrayList<>();
 	public List<Terrain> terrains = new ArrayList<>();
 	public LevelObject selectedLevelObject = null;
 	
@@ -71,6 +75,21 @@ public class Level implements Renderable {
 //		add(new Floor(50, 50));
 //		add(new Floor(30, 60));
 //		add(new Floor(54, 54));
+		
+		sort();
+		
+	}
+	
+	private Level(String name, String levelTypeName, int width, int height, boolean isDefault) {
+		this.name = name;
+		this.levelTypeName = levelTypeName;
+		this.width = MathUtils.clamp(width, MINIMUM_WIDTH, Integer.MAX_VALUE);
+		this.height = MathUtils.clamp(height, MINIMUM_HEIGHT, Integer.MAX_VALUE);
+		this.isDefault = isDefault;
+		
+		loadLevelTypeAssets(levelTypeName, isDefault);
+		
+		add(new Background());
 		
 		sort();
 		
@@ -124,14 +143,38 @@ public class Level implements Renderable {
 		
 		if (db == null) return null;
 		
-		Level l = new Level();
+		RCObject meta = db.objects.get(0);
+		Level l = null;
+		try {
+			l = new Level(
+				db.getName(), 
+				meta.findString("type").getString(), 
+				meta.findField("width").getInt(), 
+				meta.findField("height").getInt(), 
+				meta.findField("isDefault").getBoolean());
+		} catch (Exception e) {
+			l = new Level(
+				db.getName(), 
+				Level.DEFAULT_LEVEL_TYPE, 
+				meta.findField("width").getInt(), 
+				meta.findField("height").getInt(), 
+				meta.findField("isDefault").getBoolean());
+		}
 		
+//		Level l = new Level(db.getName(), "Fields", 0, 0, true);
+		
+//		l.levelTypeName = "Desert";
+//		l.loadLevelTypeAssets("Desert", true);
+//		l.reloadAssets();
+				
 		//Set member variables
-		l.name = db.getName();
+//		l.name = db.getName();
 		
-		for (RCObject obj : db.objects) {
-			
+		//THIS STARTS AT 1
+		RCObject obj;
+		for (int i = 1; i < db.objects.size(); i++) {
 			LevelObject lo = null;
+			obj = db.objects.get(i);
 			
 			switch (obj.getName()) {
 			case (Terrain.TERRAIN_NAME): 
@@ -139,8 +182,20 @@ public class Level implements Renderable {
 				
 			}
 			l.add(lo);
-			
 		}
+		
+//		for (RCObject obj : db.objects) {
+//			
+//			LevelObject lo = null;
+//			
+//			switch (obj.getName()) {
+//			case (Terrain.TERRAIN_NAME): 
+//				lo = Terrain.deserializeSubClass(obj, obj.findString("type").getString()); break;
+//				
+//			}
+//			l.add(lo);
+//			
+//		}
 		
 		l.sort();
 		
@@ -161,17 +216,23 @@ public class Level implements Renderable {
 		}
 		
 		RCDatabase db = new RCDatabase(name);
-		RCObject obj;
+		System.out.println(levelTypeName);
 		
+		RCObject lvlMeta = new RCObject("meta");
+		lvlMeta.addString(RCString.Create("type", levelTypeName));
+		lvlMeta.addField(RCField.Boolean("isDefault", isDefault));
+		lvlMeta.addField(RCField.Int("width", width));
+		lvlMeta.addField(RCField.Int("height", height));
+		db.addObject(lvlMeta);
+		
+		RCObject obj;
 		for (LevelObject lo : levelObjects) {
 			obj = lo.serialize();
 			if (obj != null)
 				db.addObject(obj);				
 		}
 		
-		
-		
-		System.out.println(directory);
+//		System.out.println(directory);
 		db.serializeToFile(directory);
 		
 	}
@@ -195,11 +256,17 @@ public class Level implements Renderable {
 		
 		for (int i = 0; i < fileNames.length; i++) {
 			loc.add(fileNames[i]);// = fileNames[i];
-			System.out.println(loc.get(i));
+//			System.out.println(loc.get(i));
 		}
 	}
 	
+	/**
+	 * This method could be used to load assets too, but it discards levelType each time so nah.
+	 * @param levelTypeName
+	 * @param isDefault
+	 */
 	private void loadLevelTypeAssets(String levelTypeName, boolean isDefault) {
+		
 		
 		try {
 			levelType = new LevelType(levelTypeName, isDefault);
@@ -211,6 +278,42 @@ public class Level implements Renderable {
 			lo.init(this);
 		}
 		
+	}
+	
+	public void switchAssets(String levelTypeName, boolean isDefault) {
+		try {
+			levelType = new LevelType(levelTypeName, isDefault);
+			this.levelTypeName = levelTypeName;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		//Rather than call the reloadAssets, Im going to re-init the LevelObjects here. Clearly there is some inefficiency, but I don't care to care.
+		for (LevelObject o : levelObjects){
+			o.init(this);
+		}
+	}
+	
+	public void reloadAssets() {
+		
+		try {
+			levelType.loadAssets(levelType.levelTypeDirectoryPath);
+		} catch (IOException e) {
+			try {
+				this.levelTypeName = Level.DEFAULT_LEVEL_TYPE;
+				levelType = new LevelType(Level.DEFAULT_LEVEL_TYPE, true);
+			} catch (IOException e1) {
+				System.err.println("You did the wrong");
+				e1.printStackTrace();
+			}
+			e.printStackTrace();
+		}
+		
+		for (LevelObject o : levelObjects)
+			o.init(this);
+//			System.out.println(o);
+			
+
 	}
 	
 	public void render(Screen screen) {
@@ -250,11 +353,13 @@ public class Level implements Renderable {
 		customLevelTypes = new ArrayList<>();
 		
 		System.out.println("Loading Level types: Default");
-		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
-		System.out.println("Loading Level types: Custom");
-		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
-		System.out.println("Debug from Level.initialize()");
+//		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirDefaultLevelTypes, defaultLevelTypes);
+		loadLevelTypes(Assets.prgmDir + Assets.dirDefaultLevelTypes, defaultLevelTypes);
 		System.out.println(defaultLevelTypes);
+
+		System.out.println("Loading Level types: Custom");
+//		loadLevelTypes(System.getProperty("user.dir") + "/res" + Assets.dirCustomLevelTypes, customLevelTypes);
+		loadLevelTypes(Assets.prgmDir + Assets.dirCustomLevelTypes, customLevelTypes);
 		System.out.println(customLevelTypes);
 	}
 	

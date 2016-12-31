@@ -6,6 +6,7 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferStrategy;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ import javax.swing.JFrame;
 import com.farr.Events.Event;
 import com.farr.Events.EventDispatcher;
 import com.farr.Events.EventListener;
+import com.farr.Events.types.KeyTypedEvent;
 import com.farr.Events.types.MouseMovedEvent;
 import com.farr.Events.types.MousePressedEvent;
 import com.farr.Events.types.MouseReleasedEvent;
@@ -49,8 +51,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	private JFrame frame;
 	private static final String TITLE = "Platty the Platformer | Level Editor";
 	private static final String VERSION = "dev 0.0";
-//	private java.awt.List listDefaultLevelTypes;
-//	private java.awt.List listCustomLevelTypes;
+	Font scrollListFont;
 	private UIScrollList listDefaultLevelTypes;
 	private UIScrollList listCustomLevelTypes;
 	
@@ -89,18 +90,27 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	
 	public volatile Level level;	//Level being edited. Should be created by deserializing a file, or as a new blank slate.
 	
+	//TODO this constructor does an awful lot for a constructor.
+	//	A lot of initialization things, but it is beginning to feel more like something that would run at the start... not when constructed!
 	public Editor() {
 		
 		Level.initialize();
+
+		UIPromptOption startup = new UIPromptOption(width, height, "Select one", "New Level", "Load Level");
+		UIPromptOption exit = new UIPromptOption(width, height, "Do you want to save?", "Yes", "No");
 		
 		Dimension size = new Dimension(width, height);
 		setPreferredSize(size);
 		
-		frame = new JFrame();
-		
-		
-//		frame.add(listDefaultLevelTypes);
-		
+		frame = new JFrame() {
+			protected void processWindowEvent(final WindowEvent e) {
+				if (e.getID() == WindowEvent.WINDOW_CLOSING) {
+					save(level);
+				}
+				super.processWindowEvent(e);
+		    }
+		};
+			
 		
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
 		screen.setOffset(-screen.width / 2, -screen.height/2);
@@ -109,19 +119,6 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		editorPanel.setColor(0xE8BA55);
 		propertyPanel = new UIPanel(new Vector2i(200, height - 100), new Vector2i (width - 200, 100));
 		propertyPanel.setColor(0x55BAE8);
-		//@devnote Add screen and panels to stack thing, in Screen, propPan, editPan order.
-		
-		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,150));
-		listDefaultLevelTypes.setColor(0x202020);
-		listCustomLevelTypes = new UIScrollList(new Vector2i(10,235), new Vector2i(180,150));
-		listCustomLevelTypes.setColor(0x202020);
-		
-		editorPanel.add(listDefaultLevelTypes);
-		editorPanel.add(listCustomLevelTypes);
-		//@devnote TEMPORARY LOAD BLANK LEVEL
-		
-		UIPromptOption startup = new UIPromptOption(width, height, "Select one", "New Level", "Load Level");
-		//@devnote Loading levels is disabled for now until I work on typed input, and/or level browser
 		
 		startup.init(layerListClassic);
 		currentPrompt = startup;
@@ -137,13 +134,23 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		}, "I BETTER NOT BE RUNNING LONG");
 		promptThread.start();
 		
-		Font font = new Font("Times New Roman", Font.PLAIN, 18);
-		for (String lType : Level.defaultLevelTypes) {
-			listDefaultLevelTypes.add(new UILabel(new Vector2i(0,0), lType, font).setYPaddingOffset(2).setColor(Color.black));
-		}
-		for (String lType : Level.customLevelTypes) {
-			listCustomLevelTypes.add(new UILabel(new Vector2i(0,0), lType, font).setYPaddingOffset(2).setColor(Color.black));
-		}
+		
+		scrollListFont = new Font("Times New Roman", Font.PLAIN, 18);
+		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,100));
+		listCustomLevelTypes = new UIScrollList(new Vector2i(10,185), new Vector2i(180,100));
+		
+		populateTypeSelectList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes);
+		populateTypeSelectList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes);
+
+		editorPanel.add(listDefaultLevelTypes);
+		editorPanel.add(listCustomLevelTypes);
+		
+//		for (String lType : Level.defaultLevelTypes) {
+//			listDefaultLevelTypes.add(new UILabel(new Vector2i(0,0), lType, scrollListFont,() -> {level.switchAssets(lType, true);}).setYPaddingOffset(2).setColor(Color.black));
+//		}
+//		for (String lType : Level.customLevelTypes) {
+//			listCustomLevelTypes.add(new UILabel(new Vector2i(0,0), lType, scrollListFont, () -> {level.switchAssets(lType, false);}).setYPaddingOffset(2).setColor(Color.black));
+//		}
 		
 //		level = new Level();
 //		level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl");
@@ -162,17 +169,28 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 	}
 	
+	public void populateTypeSelectList(Font font, UIScrollList scrList, List<String> strings) {
+		scrList.clear();
+		for (String lType : strings) {
+			scrList.add(new UILabel(new Vector2i(0,0), lType, font,() -> {level.switchAssets(lType, true);}).setYPaddingOffset(2).setColor(Color.black));
+		}
+	}
+	
 	public static void save(Level level) {
 		level.sort();
 		
-		String directory = Assets.pathToRes + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels);
-		System.out.println(directory);
-		
-		level.serialize(directory);
+//		String directory = Assets.prgmDir + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels);
+//		System.out.println(directory);
+//		
+//		level.serialize(directory);
+		level.serialize(Assets.prgmDir + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels));
 	}
 
 	public void start() {
 		running = true;
+		
+		screenScrollX = screen.width/2;
+		screenScrollY = screen.height/2;
 		
 		thread = new Thread(this, "Level Editor");
 		thread.start();
@@ -318,6 +336,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		dispatcher.dispatch(Event.Type.MOUSE_PRESSED, (Event e) -> onMousePress((MousePressedEvent) e));
 		dispatcher.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) e));
 		dispatcher.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) e));
+		dispatcher.dispatch(Event.Type.KEY_TYPED, (Event e) -> onKeyType((KeyTypedEvent) e));
 		
 	}
 	
@@ -380,6 +399,29 @@ public class Editor extends Canvas implements Runnable, EventListener {
 			return true;
 		}
 		return false;
+	}
+	
+	public boolean onKeyType(KeyTypedEvent e) {
+		
+		//Shortcuts!
+		final char charShftR = '\u0052';
+		final char charCtrlS = '\u0013';
+		
+//		System.out.printf("%x\n", (short) e.getKeyChar());
+		
+		switch (e.getKeyChar()) {
+		case (charShftR):
+			Level.initialize();
+			populateTypeSelectList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes);
+			populateTypeSelectList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes);
+			level.reloadAssets();
+			return true;
+		case (charCtrlS):
+			save(level);
+			return true;
+		default: return false;
+		}
+		
 	}
 	
 	/**
