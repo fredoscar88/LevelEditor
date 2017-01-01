@@ -61,7 +61,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	Font scrollListFont;
 	private UIScrollList listDefaultLevelTypes;
 	private UIScrollList listCustomLevelTypes;
-	private UIScrollList listEditableLevels;
+	private UIScrollList listDefaultLevels;
+	private UIScrollList listCustomLevels;
 	private UITextField textFieldSaveNameAs;
 	private UIButton buttonSaveNameAs;
 	//No, I don't need anyone to tell me how terriblez this is.
@@ -112,7 +113,6 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		Level.initialize();
 
 		UIPromptOption startup = new UIPromptOption(width, height, "Select one", "New Level", "Load Level");
-		UIPromptOption exit = new UIPromptOption(width, height, "Do you want to save?", "Yes", "No");
 		
 		Dimension size = new Dimension(width, height);
 		setPreferredSize(size);
@@ -147,9 +147,13 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		promptThread = new Thread(() -> {
 			currentPrompt.value = -1;
 			int response = currentPrompt.awaitResponse();
+			
+			if (listDefaultLevels.size() == 0 && listCustomLevels.size() == 0) response = 0;
+			if (listCustomLevels.size() == 0 && !isDevVersion) response = 0;
+			
 			switch (response) {
 			case 0: 
-				level = new Level(this); 
+				level = new Level(this, isDevVersion); //Dev version makes default levels. Really I should have a way to switch runtime. yeah..
 				break;
 			case 1: 
 				load();
@@ -168,7 +172,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		scrollListFont = new Font("Times New Roman", Font.PLAIN, 18);
 		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,60));
 		listCustomLevelTypes = new UIScrollList(new Vector2i(10,160), new Vector2i(180,60));
-		listEditableLevels = new UIScrollList(new Vector2i(10,30), new Vector2i(180,100));
+		listDefaultLevels = new UIScrollList(new Vector2i(10,30), new Vector2i(180,100));
+		listCustomLevels = new UIScrollList(new Vector2i(10, 160), new Vector2i(180,100));
 		
 		populateScrollList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes, true);
 		populateScrollList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes, false);
@@ -195,7 +200,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		editorPanel.add(listDefaultLevelTypes);
 		editorPanel.add(listCustomLevelTypes);
 		
-		panelLevelSelect.add(listEditableLevels);
+		panelLevelSelect.add(listDefaultLevels);
+		panelLevelSelect.add(listCustomLevels);
 				
 		
 		key = new Keyboard(this);
@@ -223,22 +229,22 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		}
 	}
 	public void setScrollListLevel() {
-		listEditableLevels.clear();
+		listDefaultLevels.clear();
+		listCustomLevels.clear();
 		if (isDevVersion) 
-			for (String levelName : Level.allLevels) {
-				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+			for (String levelName : Level.defaultLevels) {
+				listDefaultLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listDefaultLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
 			}
-		else {
-			for (String levelName : Level.customLevels) {
-				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
-			}
+//		else {
+		for (String levelName : Level.customLevels) {
+			listCustomLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listCustomLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
 		}
+//		}
 	}
 	
 	//TODO In the future, or if I were a better programmer, this would either A) belong to level, or B) be static or C) both!
 	public void save() {
 		level.sort();
-		System.out.println(Thread.currentThread());
 		
 		//sa|veName is null if we created a newLevel
 		if (saveName == null) {
@@ -277,18 +283,23 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 		Level.initialize();
 		setScrollListLevel();
-		listEditableLevels.selectedItem = null;
+		listDefaultLevels.selectedItem = null;
+		listCustomLevels.selectedItem = null;
+//		listCustomLevels
 		
 		screenCover = new UIPanel(new Vector2i(0,0), new Vector2i(width, height)).setColor(0x7f202020, true);
 		screenCover.add(panelLevelSelect);
 		layerListClassic.add(screenCover);
 		
-		while (listEditableLevels.selectedItem == null) {
+		while (listDefaultLevels.selectedItem == null && listCustomLevels.selectedItem == null) {
 		}
 		
 		layerListClassic.remove(screenCover);
 //		System.out.println("res/Levels/Default/" + listEditableLevels.selectedItem + ".lvl");
-		level = Level.deserializeFromFile("res/Levels/Default/" + listEditableLevels.selectedItem + ".lvl", this); 
+		if (listDefaultLevels.selectedItem != null)
+			level = Level.deserializeFromFile("res/Levels/Default/" + listDefaultLevels.selectedItem + ".lvl", this); 
+		else
+			level = Level.deserializeFromFile("res/Levels/Custom/" + listCustomLevels.selectedItem + ".lvl", this);
 		saveName = level.name;
 	}
 
@@ -521,7 +532,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		final char charCtrlN = '\u000E';
 		final char charCtrlL = '\u000C';
 		
-		System.out.printf("%04X\n", (short) e.getKeyChar());
+//		System.out.printf("%04X\n", (short) e.getKeyChar());
 		
 		switch (e.getKeyChar()) {
 		case (charShftR):
@@ -538,7 +549,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		case (charCtrlN):
 			setNonClashingLevelSaveName();
 			save();
-			level = new Level(this);
+			level = new Level(this, isDevVersion);
 			saveName = null;
 			return true;
 		case (charCtrlL):

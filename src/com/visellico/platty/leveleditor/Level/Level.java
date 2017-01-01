@@ -43,11 +43,12 @@ public class Level implements Renderable {
 	
 	public static List<String> defaultLevels;
 	public static List<String> customLevels;
-	public static List<String> allLevels;
+//	public static List<String> allLevels;
 	
 	
 	public volatile LevelType levelType;
 	public boolean isDefault;
+	public boolean usesDefaultAssets = true;
 	public volatile List<LevelObject> levelObjects = new ArrayList<>();
 	public List<Terrain> terrains = new ArrayList<>();
 	public LevelObject selectedLevelObject = null;
@@ -71,16 +72,16 @@ public class Level implements Renderable {
 	/**
 	 * Creates a new, blank level, of a default type.
 	 */
-	public Level(Editor editor) {
+	public Level(Editor editor, boolean isDefault) {
 		width = MINIMUM_WIDTH;
 		height = MINIMUM_HEIGHT;
 		levelTypeName = DEFAULT_LEVEL_TYPE;
-		isDefault = true;
+		this.isDefault = isDefault;
 		name = "TEMPORARY NAME";
 		
 		this.editor = editor;
 		
-		loadLevelTypeAssets(levelTypeName, isDefault);
+		loadLevelTypeAssets(levelTypeName, true);
 		
 		add(new Background());
 //		add(new Floor(50, 50));
@@ -91,16 +92,16 @@ public class Level implements Renderable {
 		
 	}
 	
-	private Level(String name, String levelTypeName, int width, int height, boolean isDefault, Editor editor) {
+	private Level(String name, String levelTypeName, int width, int height, boolean isDefault, boolean usesDefaultAssets, Editor editor) {
 		this.name = name;
 		this.levelTypeName = levelTypeName;
 		this.width = MathUtils.clamp(width, MINIMUM_WIDTH, Integer.MAX_VALUE);
 		this.height = MathUtils.clamp(height, MINIMUM_HEIGHT, Integer.MAX_VALUE);
-		this.isDefault = isDefault;
+		this.isDefault = isDefault; this.usesDefaultAssets = usesDefaultAssets;
 		
 		this.editor = editor;
 		
-		loadLevelTypeAssets(levelTypeName, isDefault);
+		loadLevelTypeAssets(levelTypeName, usesDefaultAssets);
 		
 		add(new Background());
 		
@@ -153,8 +154,6 @@ public class Level implements Renderable {
 		
 		RCDatabase db = RCDatabase.deserializeFromFile(filePath);
 		String name = FileUtils.stripPath(FileUtils.stripExtension(filePath));
-		System.out.println("oops " + name);
-//		System.out.println(db);
 		
 		if (db == null) return null;
 		
@@ -167,6 +166,7 @@ public class Level implements Renderable {
 				meta.findField("width").getInt(), 
 				meta.findField("height").getInt(), 
 				meta.findField("isDefault").getBoolean(),
+				meta.findField("usesDefaultAssets").getBoolean(),
 				editor);
 		} catch (Exception e) {
 			l = new Level(
@@ -175,8 +175,10 @@ public class Level implements Renderable {
 				meta.findField("width").getInt(), 
 				meta.findField("height").getInt(), 
 				meta.findField("isDefault").getBoolean(),
+				true,
 				editor);
 		}
+		System.out.println(l.isDefault);
 		
 		//THIS STARTS AT 1
 		RCObject obj;
@@ -215,6 +217,7 @@ public class Level implements Renderable {
 		RCObject lvlMeta = new RCObject("meta");
 		lvlMeta.addString(RCString.Create("type", levelTypeName));
 		lvlMeta.addField(RCField.Boolean("isDefault", isDefault));
+		lvlMeta.addField(RCField.Boolean("usesDefaultAssets", usesDefaultAssets));
 		lvlMeta.addField(RCField.Int("width", width));
 		lvlMeta.addField(RCField.Int("height", height));
 		db.addObject(lvlMeta);
@@ -274,10 +277,11 @@ public class Level implements Renderable {
 		
 	}
 	
-	public void switchAssets(String levelTypeName, boolean isDefault) {
+	public void switchAssets(String levelTypeName, boolean isDefaultAsset) {
 		try {
-			levelType = new LevelType(levelTypeName, isDefault);
+			levelType = new LevelType(levelTypeName, isDefaultAsset);
 			this.levelTypeName = levelTypeName;
+			this.usesDefaultAssets = isDefaultAsset;
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -366,7 +370,7 @@ public class Level implements Renderable {
 		
 		defaultLevels = new ArrayList<>();
 		customLevels = new ArrayList<>();
-		allLevels = new ArrayList<>();
+//		allLevels = new ArrayList<>();
 		
 //		System.out.println("Loading Level types: Default");
 //		loadLevelTypes(Assets.prgmDir + Assets.dirDefaultLevelTypes, defaultLevelTypes);
@@ -384,8 +388,8 @@ public class Level implements Renderable {
 		FileUtils.loadNames(Assets.prgmDir + Assets.dirCustomLevels, customLevels);
 		System.out.println(customLevels);
 		
-		allLevels.addAll(defaultLevels);
-		allLevels.addAll(customLevels);
+//		allLevels.addAll(defaultLevels);
+//		allLevels.addAll(customLevels);
 				
 	}
 	

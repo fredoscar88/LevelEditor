@@ -98,6 +98,7 @@ public class Floor extends Terrain {
 	}
 	
 	public void render(Screen screen) {
+		//TODO clamp the dimensions that trimmings are drawn, so that they cant be drawn bigger than the actual object and thus exceed the boundaries, like that of the level >_>
 		screen.renderSpriteTiled(x, y, width, height, spriteFloor);
 		screen.renderSpriteTiled(x, y, trimWidthLeft, height, spriteTrimLeft);
 		screen.renderSpriteTiled(x + width - trimWidthRight, y, trimWidthRight, height, spriteTrimRight);
