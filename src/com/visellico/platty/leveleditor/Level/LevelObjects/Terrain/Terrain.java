@@ -5,7 +5,9 @@ import java.util.List;
 
 import com.farr.Events.Event;
 import com.farr.Events.EventDispatcher;
+import com.farr.Events.types.MouseMovedEvent;
 import com.farr.Events.types.MousePressedEvent;
+import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
 import com.visellico.platty.leveleditor.LayerLE;
 import com.visellico.platty.leveleditor.Level.Level;
@@ -13,11 +15,14 @@ import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
 import com.visellico.rainecloud.serialization.RCField;
 import com.visellico.rainecloud.serialization.RCObject;
 import com.visellico.rainecloud.serialization.RCString;
+import com.visellico.util.MathUtils;
 
 public class Terrain extends LevelObject {
 
 	int width, height;
 	public static final String TERRAIN_NAME = "terrain";
+	
+	private boolean moveWithMouse = false;
 	
 	/**
 	 * serializes all aspects of Terrain that are non-specific
@@ -72,6 +77,10 @@ public class Terrain extends LevelObject {
 	}
 
 	public void update() {
+//		System.out.println(this);
+		y = MathUtils.clamp(y,2, l.height);
+		height = MathUtils.clamp(height, 2, l.height);
+//		System.out.println(this + " " + y + " " + height);
 	}
 	
 //	public static class HeightComparator implements Comparator<Terrain> {
@@ -99,20 +108,53 @@ public class Terrain extends LevelObject {
 		EventDispatcher dispatch = new EventDispatcher(event);
 		
 		dispatch.dispatch(Event.Type.MOUSE_PRESSED, (Event e) -> onMousePress((MousePressedEvent) event));
-		
+		dispatch.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) event));
+		dispatch.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) event));
 	}
-
+	
 	private boolean onMousePress(MousePressedEvent e) {
-		System.out.println(this.serialName + " was clicked");
-		return true;
+
+		int levelX = l.editor.mouseXToScreenX(e.getX()) + l.editor.screenScrollX;
+		int levelY = l.editor.mouseYToScreenY(e.getY()) + l.editor.screenScrollY;
+		
+		if (levelX >= x && levelX < x + width) {
+			if (levelY <= y && levelY > y - height) {
+				
+				moveWithMouse = true;
+				
+				return true;
+			}
+		}
+		
+		return false;
+	}
+	
+	private boolean onMouseRelease(MouseReleasedEvent e) {
+		if (moveWithMouse) {
+			moveWithMouse = false;
+			l.sort();
+			return true;
+		}
+		return false;
+	}
+	
+	private boolean onMouseMove(MouseMovedEvent e) {
+		
+		if (moveWithMouse) {
+			x = MathUtils.clamp(getLevelXFromMouse(e.getX()),1, l.width - width);
+			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),5, l.height - 1);
+			if (this instanceof Floor) height = y;
+			
+		}
+		return false;
 	}
 	
 	public void init(List<LayerLE> l) {
 	}
 
-	public void init(Level l) {
-		// TODO Auto-generated method stub
-		
-	}
+//	public void init(Level l) {
+//		// TODO Auto-generated method stub
+//		
+//	}
 	
 }

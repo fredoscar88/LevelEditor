@@ -23,6 +23,8 @@ public class Floor extends Terrain {
 	public static Sprite spriteTrimLeft;
 	public static Sprite spriteTrimRight;
 	
+	private int trimWidthLeft, trimWidthRight, topHeight;
+	
 	public static final int DEFAULT_WIDTH = 15;
 	public static final String FLOOR_TYPE_NAME = "floor";
 	
@@ -97,16 +99,21 @@ public class Floor extends Terrain {
 	
 	public void render(Screen screen) {
 		screen.renderSpriteTiled(x, y, width, height, spriteFloor);
-		screen.renderSpriteTiled(x, y, 2, height, spriteTrimLeft);
-		screen.renderSpriteTiled(x + width - 2, y, 2, height, spriteTrimRight);
-		screen.renderSpriteTiled(x, y, width, 3, spriteTop);
+		screen.renderSpriteTiled(x, y, trimWidthLeft, height, spriteTrimLeft);
+		screen.renderSpriteTiled(x + width - trimWidthRight, y, trimWidthRight, height, spriteTrimRight);
+		screen.renderSpriteTiled(x, y, width, topHeight, spriteTop);
 	}
 
 	public void init(Level l) {
+		super.init(l);
 		spriteFloor = l.levelType.spriteFloor;
 		spriteTop = l.levelType.spriteFloorTop;
 		spriteTrimLeft = l.levelType.spriteFloorTrimLeft;
 		spriteTrimRight = l.levelType.spriteFloorTrimRight;
+		
+		trimWidthLeft = spriteTrimLeft.getWidth();
+		trimWidthRight = spriteTrimRight.getWidth();
+		topHeight = spriteTop.getHeight();
 	}
 	
 }

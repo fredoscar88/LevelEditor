@@ -1,6 +1,5 @@
 package com.visellico.platty.leveleditor.Level.LevelObjects;
 
-import com.visellico.graphics.Screen;
 import com.visellico.platty.leveleditor.Renderable;
 import com.visellico.platty.leveleditor.Level.Addable;
 import com.visellico.platty.leveleditor.Level.Level;
@@ -18,11 +17,26 @@ public abstract class LevelObject implements Addable, Renderable {
 	//Some may not even render any sprites!
 	
 	public boolean isSelected;
-	public Level l;	//May not be needed
+	public Level l;	
 	
-	public abstract void render(Screen screen);
+	public void init(Level l) {
+		this.l = l;
+	}
 	
+//	public abstract void render(Screen screen);
+//	
+//	public abstract void update();
+//	
+//	public abstract boolean onEvent(Event e);
+//	
 	public abstract RCObject serialize();
+	
+	public int getLevelXFromMouse(int x) {
+		return l.editor.mouseXToScreenX(x) + l.editor.screenScrollX;
+	}
+	public int getLevelYFromMouse(int y) {
+		return l.editor.mouseYToScreenY(y) + l.editor.screenScrollY;
+	}
 	
 //	public abstract LevelObject deserialize(RCObject obj);
 	

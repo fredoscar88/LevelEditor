@@ -21,15 +21,18 @@ import com.farr.Events.types.MouseMovedEvent;
 import com.farr.Events.types.MousePressedEvent;
 import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
+import com.visellico.graphics.ui.UIButton;
 import com.visellico.graphics.ui.UILabel;
 import com.visellico.graphics.ui.UIPanel;
 import com.visellico.graphics.ui.UIPromptOption;
 import com.visellico.graphics.ui.UIScrollList;
+import com.visellico.graphics.ui.UITextField;
 import com.visellico.input.Focus;
 import com.visellico.input.Keyboard;
 import com.visellico.input.Mouse;
 import com.visellico.platty.Assets;
 import com.visellico.platty.leveleditor.Level.Level;
+import com.visellico.util.FileUtils;
 import com.visellico.util.MathUtils;
 import com.visellico.util.Vector2i;
 
@@ -46,14 +49,25 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	private static final long serialVersionUID = 1L;
 	
 	private Thread thread;
+	public Thread promptThread;
+	public Thread saveThreadLol;
+	public Thread loadThreadLol;
 	private boolean running;
 	
 	private JFrame frame;
 	private static final String TITLE = "Platty the Platformer | Level Editor";
 	private static final String VERSION = "dev 0.0";
+	private boolean isDevVersion = true;
 	Font scrollListFont;
 	private UIScrollList listDefaultLevelTypes;
 	private UIScrollList listCustomLevelTypes;
+	private UIScrollList listEditableLevels;
+	private UITextField textFieldSaveNameAs;
+	private UIButton buttonSaveNameAs;
+	//No, I don't need anyone to tell me how terriblez this is.
+	public UIPanel screenCover;
+	public UIPanel panelLevelSelect;
+	public UIPanel panelSaveAs;
 	
 	public static Editor editor;
 	public int width = 1600;
@@ -65,7 +79,6 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	public Focus focus;
 	
 	public UIPromptOption currentPrompt;
-	public Thread promptThread;
 	
 	private List<Renderable> screenRenderList = new ArrayList<>();
 	private List<LayerLE> layerList = new ArrayList<>();
@@ -89,9 +102,11 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	int curMouseY;
 	
 	public volatile Level level;	//Level being edited. Should be created by deserializing a file, or as a new blank slate.
+	public volatile static String saveName;	//Name of the level we LOADED. if we created a NEW level, then this is null.
 	
 	//TODO this constructor does an awful lot for a constructor.
 	//	A lot of initialization things, but it is beginning to feel more like something that would run at the start... not when constructed!
+	//	ALSO TODO editor does NOT have support to edit multiple levels at once! shame really.
 	public Editor() {
 		
 		Level.initialize();
@@ -105,12 +120,19 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		frame = new JFrame() {
 			protected void processWindowEvent(final WindowEvent e) {
 				if (e.getID() == WindowEvent.WINDOW_CLOSING) {
-					save(level);
+					if (layerListClassic.size() > 0) super.processWindowEvent(e);
+					setNonClashingLevelSaveName();
+					save();
 				}
 				super.processWindowEvent(e);
 		    }
 		};
-			
+		
+		
+		screenCover = new UIPanel(new Vector2i(0,0), new Vector2i(width, height)).setColor(0x7f202020, true);
+		
+		panelLevelSelect = new UIPanel(new Vector2i(screenCover.size.x / 2 - 250, screenCover.size.y / 2 - 250), new Vector2i(500,500)).setColor(0x55BAE8, false);
+		panelSaveAs = new UIPanel(new Vector2i(screenCover.size.x / 2 - 250, screenCover.size.y / 2 - 250), new Vector2i(500,500)).setColor(0x55BAE8, false);
 		
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
 		screen.setOffset(-screen.width / 2, -screen.height/2);
@@ -126,39 +148,64 @@ public class Editor extends Canvas implements Runnable, EventListener {
 			currentPrompt.value = -1;
 			int response = currentPrompt.awaitResponse();
 			switch (response) {
-			case 0: level = new Level(); break;
-			case 1: level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl"); break;
+			case 0: 
+				level = new Level(this); 
+				break;
+			case 1: 
+				load();
+//				level = Level.deserializeFromFile("res/Levels/Default/Test Level.lvl"); 
+//				saveName = level.name;
+				break;
 
 			}
 			currentPrompt = null;
 		}, "I BETTER NOT BE RUNNING LONG");
 		promptThread.start();
 		
+//		saveThreadCreate();
+		
 		
 		scrollListFont = new Font("Times New Roman", Font.PLAIN, 18);
-		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,100));
-		listCustomLevelTypes = new UIScrollList(new Vector2i(10,185), new Vector2i(180,100));
+		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,60));
+		listCustomLevelTypes = new UIScrollList(new Vector2i(10,160), new Vector2i(180,60));
+		listEditableLevels = new UIScrollList(new Vector2i(10,30), new Vector2i(180,100));
 		
-		populateTypeSelectList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes);
-		populateTypeSelectList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes);
+		populateScrollList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes, true);
+		populateScrollList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes, false);
+		
+		//Yes this is bad. TODO in the postmortem, point out how shite my ScrollList thingies are.
+		setScrollListLevel();
+//		listEditableLevels.clear();
+//		if (isDevVersion) 
+//			for (String levelName : Level.allLevels) {
+//				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+//			}
+//		else {
+//			for (String levelName : Level.customLevels) {
+//				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+//			}
+//		}
+		
+		textFieldSaveNameAs = new UITextField(new Vector2i(30,30),460,"Enter level name here");
+		buttonSaveNameAs = new UIButton(new Vector2i(30,100), new Vector2i(115,30), () -> {saveName = textFieldSaveNameAs.getText(); layerListClassic.remove(screenCover);}, "Save");
+//		panelSaveAs.addFocusable(textFieldSaveNameAs);
+		panelSaveAs.add(textFieldSaveNameAs);
+		panelSaveAs.add(buttonSaveNameAs);
 
 		editorPanel.add(listDefaultLevelTypes);
 		editorPanel.add(listCustomLevelTypes);
 		
-//		for (String lType : Level.defaultLevelTypes) {
-//			listDefaultLevelTypes.add(new UILabel(new Vector2i(0,0), lType, scrollListFont,() -> {level.switchAssets(lType, true);}).setYPaddingOffset(2).setColor(Color.black));
-//		}
-//		for (String lType : Level.customLevelTypes) {
-//			listCustomLevelTypes.add(new UILabel(new Vector2i(0,0), lType, scrollListFont, () -> {level.switchAssets(lType, false);}).setYPaddingOffset(2).setColor(Color.black));
-//		}
-		
-//		level = new Level();
-//		level = Level.deserializeFromFile("res/Levels/Default/New Level.lvl");
-//		save(level);
-		//BLAAH
+		panelLevelSelect.add(listEditableLevels);
+				
 		
 		key = new Keyboard(this);
-		mouse = new Mouse(this);
+		System.out.println("Whats all this now?");
+		try {
+			mouse = new Mouse(this);
+		} catch (Exception e) {
+			e.printStackTrace();
+			
+		}
 		focus = new Focus(this);
 		
 		addKeyListener(key);
@@ -169,27 +216,86 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 	}
 	
-	public void populateTypeSelectList(Font font, UIScrollList scrList, List<String> strings) {
+	public void populateScrollList(Font font, UIScrollList scrList, List<String> strings, boolean isDefault) {
 		scrList.clear();
 		for (String lType : strings) {
-			scrList.add(new UILabel(new Vector2i(0,0), lType, font,() -> {level.switchAssets(lType, true);}).setYPaddingOffset(2).setColor(Color.black));
+			scrList.add(new UILabel(new Vector2i(0,0), lType, font,() -> {level.switchAssets(lType, isDefault);}).setYPaddingOffset(2).setColor(Color.black));
+		}
+	}
+	public void setScrollListLevel() {
+		listEditableLevels.clear();
+		if (isDevVersion) 
+			for (String levelName : Level.allLevels) {
+				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+			}
+		else {
+			for (String levelName : Level.customLevels) {
+				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+			}
 		}
 	}
 	
-	public static void save(Level level) {
+	//TODO In the future, or if I were a better programmer, this would either A) belong to level, or B) be static or C) both!
+	public void save() {
 		level.sort();
+		System.out.println(Thread.currentThread());
 		
-//		String directory = Assets.prgmDir + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels);
-//		System.out.println(directory);
-//		
-//		level.serialize(directory);
+		//sa|veName is null if we created a newLevel
+		if (saveName == null) {
+			screenCover = new UIPanel(new Vector2i(0,0), new Vector2i(width, height)).setColor(0x7f202020, true);
+			screenCover.add(panelSaveAs);
+			layerListClassic.add(screenCover);
+			while (saveName == null) {
+				
+			}
+			level.name = saveName;
+		}
+		
 		level.serialize(Assets.prgmDir + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels));
+		textFieldSaveNameAs.setText("");
+	}
+	
+	public void setNonClashingLevelSaveName() {
+		if (saveName == null) {
+			String tempStr = "NewLevel";
+			saveName = FileUtils.availableName(
+					(Assets.prgmDir + (level.isDefault ? Assets.dirDefaultLevels : Assets.dirCustomLevels)),
+					tempStr,
+					".lvl");
+			level.name = saveName;
+		}
+	}
+	
+	public void saveThreadCreate() {
+		saveThreadLol = new Thread(() -> {save();}, "Save Thread");
+	}
+	public void loadThreadCreate() {
+		loadThreadLol = new Thread(() -> {load();}, "Load Thread");
+	}
+	
+	public void load() {
+		
+		Level.initialize();
+		setScrollListLevel();
+		listEditableLevels.selectedItem = null;
+		
+		screenCover = new UIPanel(new Vector2i(0,0), new Vector2i(width, height)).setColor(0x7f202020, true);
+		screenCover.add(panelLevelSelect);
+		layerListClassic.add(screenCover);
+		
+		while (listEditableLevels.selectedItem == null) {
+		}
+		
+		layerListClassic.remove(screenCover);
+//		System.out.println("res/Levels/Default/" + listEditableLevels.selectedItem + ".lvl");
+		level = Level.deserializeFromFile("res/Levels/Default/" + listEditableLevels.selectedItem + ".lvl", this); 
+		saveName = level.name;
 	}
 
 	public void start() {
 		running = true;
 		
-		screenScrollX = screen.width/2;
+		screenScrollX = screen.width/2 + 1;
 		screenScrollY = screen.height/2;
 		
 		thread = new Thread(this, "Level Editor");
@@ -257,13 +363,17 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	
 	public void update() {
 		
-//		if (layerListClassic.size() > 0) {
-//			layerListClassic.get(0).update();
+		if (layerListClassic.size() > 0) {
+			layerListClassic.get(0).update();
 //			if (currentPrompt.value != -1)
 //				currentPrompt.remove();
-//			return;
-//		}
+			return;
+		}
 		editorPanel.update();
+		propertyPanel.update();
+		
+		if (level != null) 
+			level.update();
 		
 		//Updates top to bottom
 		for (int i = layerList.size() - 1; i >= 0; i--) {
@@ -306,8 +416,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		for (int i = 0; i < screenRenderList.size(); i++)
 			screenRenderList.get(i).render(screen);
 		
-		if (currentPrompt != null) {
-			currentPrompt.render(g);
+		if (layerListClassic.size() > 0) {
+			layerListClassic.get(layerListClassic.size() - 1).render(g);
 		}
 		
 		bs.show();
@@ -317,14 +427,13 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	
 	public void onEvent(Event event) {
 		
-		if (currentPrompt != null) {
-			currentPrompt.onEvent(event);
+		if (layerListClassic.size() > 0) {
+			layerListClassic.get(layerListClassic.size() - 1).onEvent(event);
 			return;
 		}
 		
 		editorPanel.onEvent(event);
 		propertyPanel.onEvent(event);
-		
 		
 		EventDispatcher dispatcher = new EventDispatcher(event);
 		
@@ -337,6 +446,9 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		dispatcher.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) e));
 		dispatcher.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) e));
 		dispatcher.dispatch(Event.Type.KEY_TYPED, (Event e) -> onKeyType((KeyTypedEvent) e));
+		
+		if (level != null) 
+			level.onEvent(event);
 		
 	}
 	
@@ -406,18 +518,32 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		//Shortcuts!
 		final char charShftR = '\u0052';
 		final char charCtrlS = '\u0013';
+		final char charCtrlN = '\u000E';
+		final char charCtrlL = '\u000C';
 		
-//		System.out.printf("%x\n", (short) e.getKeyChar());
+		System.out.printf("%04X\n", (short) e.getKeyChar());
 		
 		switch (e.getKeyChar()) {
 		case (charShftR):
 			Level.initialize();
-			populateTypeSelectList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes);
-			populateTypeSelectList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes);
+			populateScrollList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes, true);
+			populateScrollList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes, false);
+			//TODO Should probably reload list of levels too 
 			level.reloadAssets();
 			return true;
 		case (charCtrlS):
-			save(level);
+			saveThreadCreate();
+			saveThreadLol.start();
+			return true;
+		case (charCtrlN):
+			setNonClashingLevelSaveName();
+			save();
+			level = new Level(this);
+			saveName = null;
+			return true;
+		case (charCtrlL):
+			loadThreadCreate();
+			loadThreadLol.start();
 			return true;
 		default: return false;
 		}

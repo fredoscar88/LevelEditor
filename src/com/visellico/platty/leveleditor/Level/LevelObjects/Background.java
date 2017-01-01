@@ -14,26 +14,23 @@ public class Background extends LevelObject {
 	public static Sprite spriteBackground;
 	
 	public int width, height;
-	Level level;
 	
 	public Background() {
 	}
 
 	public void init(Level l) {
-		this.level = l;
+		this.l = l;
 		spriteBackground = l.levelType.spriteBackground;
 		update();
 		
 	}
 
 	public void update() {
-		this.width = level.width;
-		this.height = level.height;
+		this.width = l.width;
+		this.height = l.height;
 	}
 
 	public void onEvent(Event e) {
-		// TODO Auto-generated method stub
-		
 	}
 
 	public void init(List<LayerLE> l) {
