@@ -1,8 +1,10 @@
 package com.visellico.platty.leveleditor.Level.LevelObjects;
 
+import com.visellico.graphics.ui.UIPanel;
 import com.visellico.platty.leveleditor.Renderable;
 import com.visellico.platty.leveleditor.Level.Addable;
 import com.visellico.platty.leveleditor.Level.Level;
+import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Floor;
 import com.visellico.rainecloud.serialization.RCObject;
 
 public abstract class LevelObject implements Addable, Renderable {
@@ -10,6 +12,8 @@ public abstract class LevelObject implements Addable, Renderable {
 	public int x, y;
 	public String serialName;
 	
+	//Really should handle more stuff in this super level class, but I think Im going to distribute work to the immediate subclasses for stuff like dat x and y
+	public UIPanel panelProperties;
 	
 //	public int listID;
 //	public static int nextListID = 0;
@@ -36,6 +40,13 @@ public abstract class LevelObject implements Addable, Renderable {
 	}
 	public int getLevelYFromMouse(int y) {
 		return l.editor.mouseYToScreenY(y) + l.editor.screenScrollY;
+	}
+	
+	public abstract void onSelect();
+	
+	public LevelObject createNew(int x, int y) {
+		//Default thing to return.
+		return new Floor(x, y);
 	}
 	
 //	public abstract LevelObject deserialize(RCObject obj);

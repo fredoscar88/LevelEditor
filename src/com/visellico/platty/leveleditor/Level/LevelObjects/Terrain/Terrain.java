@@ -9,6 +9,9 @@ import com.farr.Events.types.MouseMovedEvent;
 import com.farr.Events.types.MousePressedEvent;
 import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
+import com.visellico.graphics.ui.UIPanel;
+import com.visellico.graphics.ui.UITextField;
+import com.visellico.platty.leveleditor.Editor;
 import com.visellico.platty.leveleditor.LayerLE;
 import com.visellico.platty.leveleditor.Level.Level;
 import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
@@ -16,13 +19,37 @@ import com.visellico.rainecloud.serialization.RCField;
 import com.visellico.rainecloud.serialization.RCObject;
 import com.visellico.rainecloud.serialization.RCString;
 import com.visellico.util.MathUtils;
+import com.visellico.util.Vector2i;
 
-public class Terrain extends LevelObject {
+public abstract class Terrain extends LevelObject {
 
 	int width, height;
 	public static final String TERRAIN_NAME = "terrain";
 	
 	private boolean moveWithMouse = false;
+	
+	protected UIPanel panelEditor; 
+	
+	//------ UIComponents
+	
+	protected UITextField valX = new UITextField(new Vector2i(10,25), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valY = new UITextField(new Vector2i(10,65), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valWidth = new UITextField(new Vector2i(120,25), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valHeight = new UITextField(new Vector2i(120,65), 100, "").setFont(Editor.fontEditField);
+	
+	//------
+
+	public Terrain(int x, int y, int width, int height) {
+		this.x = x;
+		this.y = y;
+		this.width = width;
+		this.height = height;
+	}
+	
+	private Terrain() {
+	}
+	
+	
 	
 	/**
 	 * serializes all aspects of Terrain that are non-specific
@@ -44,43 +71,46 @@ public class Terrain extends LevelObject {
 		
 	}
 	
-	/**
-	 * Ugh never mind
-	 * @param objTerrain
-	 * @return
-	 * @note I cant the java
-	 * @DONOTUSE
-	 */
-	public static Terrain deserializeTerrain(RCObject objTerrain) {
-	
-		Terrain t = new Terrain();
-		
-		t.x = objTerrain.findField("x").getInt();
-		t.y = objTerrain.findField("y").getInt();
-		t.width = objTerrain.findField("width").getInt();
-		t.height = objTerrain.findField("height").getInt();
-		
-		return t;
-	}
 	
 	public static Terrain deserializeSubClass(RCObject objTerrain, String type) {
-		Terrain t = new Terrain();
+		
 		
 		switch (type) {
 		case (Floor.FLOOR_TYPE_NAME): return Floor.deserializeFloor(objTerrain);
+		case (Wall.WALL_TYPE_NAME): return Wall.deserializeFloor(objTerrain);
+		default: return null;
 		}
 		
-		return t;
 	}
 
 	public void render(Screen screen) {
 	}
 
 	public void update() {
+		
 //		System.out.println(this);
-		y = MathUtils.clamp(y,2, l.height);
-		height = MathUtils.clamp(height, 2, l.height);
-//		System.out.println(this + " " + y + " " + height);
+		//TODO CONDITION TO CHECK IF OBJECT IS OUTSIDE OF LEVEL BOUNDARY- IF SO, REMOVE
+		
+		
+		x = MathUtils.parseInt(valX.getText());
+		y = MathUtils.parseInt(valY.getText());
+		x = MathUtils.clamp(x, 1, l.width - width);
+		y = MathUtils.clamp(y, 5, l.height - 1);
+		
+		//Width is clamped before X because X clamp depends on the width clamp
+		//And I put height before it too just because.
+		width = MathUtils.parseInt(valWidth.getText());
+		height = MathUtils.parseInt(valHeight.getText());
+		width = MathUtils.clamp(width, 2, l.width - x);
+		height = MathUtils.clamp(height, 5, y);
+		
+		if (!valX.getFocused()) valX.setText(Integer.toString(x));
+		if (!valY.getFocused()) valY.setText(Integer.toString(y));
+		if (!valWidth.getFocused()) valWidth.setText(Integer.toString(width));
+		if (!valHeight.getFocused()) valHeight.setText(Integer.toString(height));
+		
+//		y = MathUtils.clamp(y,2, l.height);
+//		height = MathUtils.clamp(height, 2, l.height);
 	}
 	
 //	public static class HeightComparator implements Comparator<Terrain> {
@@ -94,14 +124,19 @@ public class Terrain extends LevelObject {
 	
 	
 	//Small note, I may want to replace this with if statement conditionals, i,e if 01 < 02 return -1 or whatever, instead of this subtraction method.
-	//	I readthat it was more of a "trick" but, Im not sure what that is supposed to mean.
+	//	I read that it was more of a "trick" but, Im not sure what that is supposed to mean.
 	//	Note: returns negative if the first object is less than the second,
 	//	0 if they're the same,
 	//	positive if the first one is greater. I reversed the subtraction order because I want it to do the ordering in reverse (high to low).
 	public static void sort(List<Terrain> list) {
 		
-		Collections.sort(list, (o1, o2) -> {return o2.height - o1.height;});	//new HeightComparator()
+		Collections.sort(list, (o1, o2) -> {return o2.y - o1.y;});	//new HeightComparator()
 		
+	}
+	
+	public void onSelect() {
+		//panelEditor = panelProperties;
+//		panelEditor.size.x -= 100;
 	}
 
 	public void onEvent(Event event) {
@@ -112,7 +147,7 @@ public class Terrain extends LevelObject {
 		dispatch.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) event));
 	}
 	
-	private boolean onMousePress(MousePressedEvent e) {
+	protected boolean onMousePress(MousePressedEvent e) {
 
 		int levelX = l.editor.mouseXToScreenX(e.getX()) + l.editor.screenScrollX;
 		int levelY = l.editor.mouseYToScreenY(e.getY()) + l.editor.screenScrollY;
@@ -122,6 +157,8 @@ public class Terrain extends LevelObject {
 				
 				moveWithMouse = true;
 				
+				l.requestSelected(this);
+				
 				return true;
 			}
 		}
@@ -129,7 +166,7 @@ public class Terrain extends LevelObject {
 		return false;
 	}
 	
-	private boolean onMouseRelease(MouseReleasedEvent e) {
+	protected boolean onMouseRelease(MouseReleasedEvent e) {
 		if (moveWithMouse) {
 			moveWithMouse = false;
 			l.sort();
@@ -138,15 +175,37 @@ public class Terrain extends LevelObject {
 		return false;
 	}
 	
-	private boolean onMouseMove(MouseMovedEvent e) {
+	protected boolean onMouseMove(MouseMovedEvent e) {
 		
 		if (moveWithMouse) {
 			x = MathUtils.clamp(getLevelXFromMouse(e.getX()),1, l.width - width);
 			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),5, l.height - 1);
-			if (this instanceof Floor) height = y;
 			
+			valX.setText(Integer.toString(x));
+			valY.setText(Integer.toString(y));
+			return true;
 		}
 		return false;
+	}
+	
+	public void init(Level l) {
+		super.init(l);
+		
+		panelEditor = this.l.editor.panelProperties;
+//		this.l.editor.propertyPanel.size.x -= 100;
+//		panelEditor.size.x /= 2;
+		
+		valX.setText(Integer.toString(x));
+		valY.setText(Integer.toString(y));
+		valWidth.setText(Integer.toString(width));
+		valHeight.setText(Integer.toString(height));
+		
+		panelProperties = new UIPanel(new Vector2i(panelEditor.position.x, panelEditor.position.y), new Vector2i(panelEditor.size.x, panelEditor.size.y));
+		panelProperties.add(valX);
+		panelProperties.add(valY);
+		panelProperties.add(valWidth);
+		panelProperties.add(valHeight);
+		
 	}
 	
 	public void init(List<LayerLE> l) {

@@ -1,5 +1,8 @@
 package com.visellico.platty.leveleditor;
 
+import static com.visellico.platty.leveleditor.Level.LevelObjectFactory.Type.FLOOR;
+import static com.visellico.platty.leveleditor.Level.LevelObjectFactory.Type.WALL;
+
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -32,8 +35,10 @@ import com.visellico.input.Keyboard;
 import com.visellico.input.Mouse;
 import com.visellico.platty.Assets;
 import com.visellico.platty.leveleditor.Level.Level;
+import com.visellico.platty.leveleditor.Level.LevelObjectFactory;
 import com.visellico.util.FileUtils;
 import com.visellico.util.MathUtils;
+import com.visellico.util.StringUtils;
 import com.visellico.util.Vector2i;
 
 /**
@@ -58,7 +63,9 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	private static final String TITLE = "Platty the Platformer | Level Editor";
 	private static final String VERSION = "dev 0.0";
 	private boolean isDevVersion = true;
-	Font scrollListFont;
+	public static Font fontScrollList;
+	public static Font fontEditField = new Font("Times New Roman", Font.PLAIN, 12);
+	private UIScrollList listLevelObjects;
 	private UIScrollList listDefaultLevelTypes;
 	private UIScrollList listCustomLevelTypes;
 	private UIScrollList listDefaultLevels;
@@ -90,8 +97,10 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	public int screenCoordY = 0;
 	public int screenScrollX;
 	public int screenScrollY;
-	public UIPanel editorPanel;
-	public UIPanel propertyPanel;
+	public UIPanel panelEditor;
+		public UITextField textLevelWidth;
+		public UITextField textLevelHeight;
+	public UIPanel panelProperties;
 	
 	//Mouse drag vars
 	boolean dragging = false;
@@ -137,10 +146,10 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		screen = new Screen((width - 200) / defaultScale, (height - 100) / defaultScale, defaultScale);
 		screen.setOffset(-screen.width / 2, -screen.height/2);
 		
-		editorPanel = new UIPanel(new Vector2i(0,0), new Vector2i(200, height));
-		editorPanel.setColor(0xE8BA55);
-		propertyPanel = new UIPanel(new Vector2i(200, height - 100), new Vector2i (width - 200, 100));
-		propertyPanel.setColor(0x55BAE8);
+		panelEditor = new UIPanel(new Vector2i(0,0), new Vector2i(200, height));
+		panelEditor.setColor(0xE8BA55);
+		panelProperties = new UIPanel(new Vector2i(200, height - 100), new Vector2i (width - 200, 100));
+		panelProperties.setColor(0x55BAE8);
 		
 		startup.init(layerListClassic);
 		currentPrompt = startup;
@@ -169,27 +178,23 @@ public class Editor extends Canvas implements Runnable, EventListener {
 //		saveThreadCreate();
 		
 		
-		scrollListFont = new Font("Times New Roman", Font.PLAIN, 18);
-		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,60));
-		listCustomLevelTypes = new UIScrollList(new Vector2i(10,160), new Vector2i(180,60));
+		fontScrollList = new Font("Times New Roman", Font.PLAIN, 18);
 		listDefaultLevels = new UIScrollList(new Vector2i(10,30), new Vector2i(180,100));
 		listCustomLevels = new UIScrollList(new Vector2i(10, 160), new Vector2i(180,100));
+		listDefaultLevelTypes = new UIScrollList(new Vector2i(10,75), new Vector2i(180,60));
+		listCustomLevelTypes = new UIScrollList(new Vector2i(10,160), new Vector2i(180,60));
+		listLevelObjects = new UIScrollList(new Vector2i(10,300), new Vector2i(180,60));
 		
-		populateScrollList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes, true);
-		populateScrollList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes, false);
+		populateScrollList(fontScrollList, listDefaultLevelTypes, Level.defaultLevelTypes, true);
+		populateScrollList(fontScrollList, listCustomLevelTypes, Level.customLevelTypes, false);
 		
-		//Yes this is bad. TODO in the postmortem, point out how shite my ScrollList thingies are.
+		//Yes this is bad. TODO in the postmortem, point out how shite my ScrollList thingies are. And all of my supposedly OO shit is :c
 		setScrollListLevel();
-//		listEditableLevels.clear();
-//		if (isDevVersion) 
-//			for (String levelName : Level.allLevels) {
-//				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
-//			}
-//		else {
-//			for (String levelName : Level.customLevels) {
-//				listEditableLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listEditableLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
-//			}
-//		}
+		setScrollListLevelObjects();
+
+		textLevelWidth = new UITextField(new Vector2i(10,400), 85, "Width").setFont(fontEditField);
+		textLevelHeight = new UITextField(new Vector2i(105,400), 85, "Height").setFont(fontEditField);
+		
 		
 		textFieldSaveNameAs = new UITextField(new Vector2i(30,30),460,"Enter level name here");
 		buttonSaveNameAs = new UIButton(new Vector2i(30,100), new Vector2i(115,30), () -> {saveName = textFieldSaveNameAs.getText(); layerListClassic.remove(screenCover);}, "Save");
@@ -197,8 +202,11 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		panelSaveAs.add(textFieldSaveNameAs);
 		panelSaveAs.add(buttonSaveNameAs);
 
-		editorPanel.add(listDefaultLevelTypes);
-		editorPanel.add(listCustomLevelTypes);
+		panelEditor.add(listDefaultLevelTypes);
+		panelEditor.add(listCustomLevelTypes);
+		panelEditor.add(listLevelObjects);
+		panelEditor.add(textLevelWidth);
+		panelEditor.add(textLevelHeight);
 		
 		panelLevelSelect.add(listDefaultLevels);
 		panelLevelSelect.add(listCustomLevels);
@@ -233,13 +241,20 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		listCustomLevels.clear();
 		if (isDevVersion) 
 			for (String levelName : Level.defaultLevels) {
-				listDefaultLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listDefaultLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+				listDefaultLevels.add(new UILabel(new Vector2i(0,0), levelName, fontScrollList, () -> {listDefaultLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
 			}
 //		else {
 		for (String levelName : Level.customLevels) {
-			listCustomLevels.add(new UILabel(new Vector2i(0,0), levelName, scrollListFont, () -> {listCustomLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
+			listCustomLevels.add(new UILabel(new Vector2i(0,0), levelName, fontScrollList, () -> {listCustomLevels.selectedItem = levelName;}).setYPaddingOffset(2).setColor(Color.black));
 		}
 //		}
+	}
+	public void setScrollListLevelObjects() {	//Woo-ee I really love me some arbitrary methods
+		listLevelObjects.clear();
+		System.out.println(LevelObjectFactory.Type.values().length);
+		for (LevelObjectFactory.Type t : LevelObjectFactory.Type.values()) {
+			listLevelObjects.add(new UILabel(new Vector2i(0,0), StringUtils.capOnlyFirst(t.toString()), fontScrollList, () -> {Level.lof.setType(t);}).setYPaddingOffset(2).setColor(Color.black));
+		}
 	}
 	
 	//TODO In the future, or if I were a better programmer, this would either A) belong to level, or B) be static or C) both!
@@ -380,8 +395,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 //				currentPrompt.remove();
 			return;
 		}
-		editorPanel.update();
-		propertyPanel.update();
+		panelEditor.update();
+		panelProperties.update();
 		
 		if (level != null) 
 			level.update();
@@ -417,8 +432,8 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		
 		//UIPanels and screen can't be rendered traditionally. Screen isn't even a layer, and the layer typiarchy for panels (draw to graphics g) is incompatible 
 		//	with the typiarchy for everything that draws to the screen, so we render them out here like dis.
-		editorPanel.render(g);
-		propertyPanel.render(g);
+		panelEditor.render(g);
+		panelProperties.render(g);
 		
 		g.drawImage(screen.image, screenCoordX, screenCoordY, screen.width * screen.scale, screen.height * screen.scale, null);
 		
@@ -438,25 +453,23 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	
 	public void onEvent(Event event) {
 		
+		EventDispatcher dispatcher = new EventDispatcher(event);
+		dispatcher.dispatch(Event.Type.MOUSE_PRESSED, (Event e) -> onMousePress((MousePressedEvent) e));
+		dispatcher.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) e));
+		dispatcher.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) e));
+		dispatcher.dispatch(Event.Type.KEY_TYPED, (Event e) -> onKeyType((KeyTypedEvent) e));
+		
 		if (layerListClassic.size() > 0) {
 			layerListClassic.get(layerListClassic.size() - 1).onEvent(event);
 			return;
 		}
 		
-		editorPanel.onEvent(event);
-		propertyPanel.onEvent(event);
-		
-		EventDispatcher dispatcher = new EventDispatcher(event);
-		
+		panelEditor.onEvent(event);
+		panelProperties.onEvent(event);
 		//Sends events top to bottom
 		for (int i = layerList.size() - 1; i >= 0; i--) {
 			layerList.get(i).onEvent(event);
 		}
-		
-		dispatcher.dispatch(Event.Type.MOUSE_PRESSED, (Event e) -> onMousePress((MousePressedEvent) e));
-		dispatcher.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) e));
-		dispatcher.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) e));
-		dispatcher.dispatch(Event.Type.KEY_TYPED, (Event e) -> onKeyType((KeyTypedEvent) e));
 		
 		if (level != null) 
 			level.onEvent(event);
@@ -469,6 +482,9 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	 * @return
 	 */
 	public boolean onMousePress(MousePressedEvent e) {
+		
+		panelEditor.clearAllFocus();
+		panelProperties.clearAllFocus();
 		
 		int mouseButton = e.getButton();
 		
@@ -527,18 +543,20 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	public boolean onKeyType(KeyTypedEvent e) {
 		
 		//Shortcuts!
-		final char charShftR = '\u0052';
-		final char charCtrlS = '\u0013';
-		final char charCtrlN = '\u000E';
-		final char charCtrlL = '\u000C';
+		final char charShftR	= '\u0052';
+		final char charCtrlS	= '\u0013';
+		final char charCtrlN	= '\u000E';
+		final char charCtrlL	= '\u000C';
+		final char charW		= '\u0077';
+		final char charF		= '\u0066';
 		
 //		System.out.printf("%04X\n", (short) e.getKeyChar());
 		
 		switch (e.getKeyChar()) {
 		case (charShftR):
 			Level.initialize();
-			populateScrollList(scrollListFont, listDefaultLevelTypes, Level.defaultLevelTypes, true);
-			populateScrollList(scrollListFont, listCustomLevelTypes, Level.customLevelTypes, false);
+			populateScrollList(fontScrollList, listDefaultLevelTypes, Level.defaultLevelTypes, true);
+			populateScrollList(fontScrollList, listCustomLevelTypes, Level.customLevelTypes, false);
 			//TODO Should probably reload list of levels too 
 			level.reloadAssets();
 			return true;
@@ -555,6 +573,12 @@ public class Editor extends Canvas implements Runnable, EventListener {
 		case (charCtrlL):
 			loadThreadCreate();
 			loadThreadLol.start();
+			return true;
+		case (charW):
+			Level.lof.setType(WALL);
+			return true;
+		case (charF):
+			Level.lof.setType(FLOOR);
 			return true;
 		default: return false;
 		}

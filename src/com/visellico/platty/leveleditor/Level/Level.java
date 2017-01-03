@@ -9,6 +9,7 @@ import com.farr.Events.Event;
 import com.farr.Events.EventDispatcher;
 import com.farr.Events.types.MousePressedEvent;
 import com.visellico.graphics.Screen;
+import com.visellico.graphics.ui.UIPanel;
 import com.visellico.platty.Assets;
 import com.visellico.platty.level.LevelType;
 import com.visellico.platty.leveleditor.Editor;
@@ -16,14 +17,15 @@ import com.visellico.platty.leveleditor.LayerLE;
 import com.visellico.platty.leveleditor.Renderable;
 import com.visellico.platty.leveleditor.Level.LevelObjects.Background;
 import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
-import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Floor;
 import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Terrain;
+import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Wall;
 import com.visellico.rainecloud.serialization.RCDatabase;
 import com.visellico.rainecloud.serialization.RCField;
 import com.visellico.rainecloud.serialization.RCObject;
 import com.visellico.rainecloud.serialization.RCString;
 import com.visellico.util.FileUtils;
 import com.visellico.util.MathUtils;
+import com.visellico.util.Vector2i;
 
 /**
  * Container for all of the terrain/objects situated inside of a Platty level.
@@ -36,6 +38,9 @@ public class Level implements Renderable {
 	public Editor editor;
 	public static final int MINIMUM_WIDTH = 500;
 	public static final int MINIMUM_HEIGHT = 250;
+	public static final int MAXIMUM_WIDTH = Integer.MAX_VALUE;
+	public static final int MAXIMUM_HEIGHT = Integer.MAX_VALUE;
+	
 	public static final String DEFAULT_LEVEL_TYPE = "Fields";	
 	
 	public static List<String> defaultLevelTypes;
@@ -43,7 +48,8 @@ public class Level implements Renderable {
 	
 	public static List<String> defaultLevels;
 	public static List<String> customLevels;
-//	public static List<String> allLevels;
+	
+	public static LevelObjectFactory lof = new LevelObjectFactory();
 	
 	
 	public volatile LevelType levelType;
@@ -95,17 +101,21 @@ public class Level implements Renderable {
 	private Level(String name, String levelTypeName, int width, int height, boolean isDefault, boolean usesDefaultAssets, Editor editor) {
 		this.name = name;
 		this.levelTypeName = levelTypeName;
-		this.width = MathUtils.clamp(width, MINIMUM_WIDTH, Integer.MAX_VALUE);
-		this.height = MathUtils.clamp(height, MINIMUM_HEIGHT, Integer.MAX_VALUE);
-		this.isDefault = isDefault; this.usesDefaultAssets = usesDefaultAssets;
+		this.width = MathUtils.clamp(width, MINIMUM_WIDTH, MAXIMUM_WIDTH);
+		this.height = MathUtils.clamp(height, MINIMUM_HEIGHT, MAXIMUM_HEIGHT);
+		this.isDefault = isDefault;
+		this.usesDefaultAssets = usesDefaultAssets;
 		
 		this.editor = editor;
+		
+		editor.textLevelWidth.setText(Integer.toString(width));
+		editor.textLevelHeight.setText(Integer.toString(height));
 		
 		loadLevelTypeAssets(levelTypeName, usesDefaultAssets);
 		
 		add(new Background());
 		
-		sort();
+		sort();		
 		
 	}
 	
@@ -143,6 +153,14 @@ public class Level implements Renderable {
 		deselect();
 		lo.isSelected = true;
 		selectedLevelObject = lo;
+		lo.onSelect();
+		if (lo.panelProperties != null) {
+			editor.panelProperties = lo.panelProperties;
+		} else {
+			System.out.println("whaat");
+			editor.panelProperties= new UIPanel(new Vector2i(200, 800), new Vector2i (1400, 100));
+			editor.panelProperties.setColor(0x55BAE8);	//Magic values ayy
+		}
 	}
 	
 	/**
@@ -333,6 +351,18 @@ public class Level implements Renderable {
 
 
 	public void update() {
+//		editor.textLevelWidth;
+//		editor.textLevelHeight;
+		
+		width = MathUtils.parseInt(editor.textLevelWidth.getText());
+		height = MathUtils.parseInt(editor.textLevelHeight.getText());
+		
+		width = MathUtils.clamp(width, MINIMUM_WIDTH, MAXIMUM_WIDTH);
+		height = MathUtils.clamp(height, MINIMUM_HEIGHT, MAXIMUM_HEIGHT);
+		
+		if (!editor.textLevelWidth.getFocused()) editor.textLevelWidth.setText(Integer.toString(width));
+		if (!editor.textLevelHeight.getFocused()) editor.textLevelHeight.setText(Integer.toString(height));
+		
 		for (LevelObject lo : levelObjects) {
 			lo.update();
 		}
@@ -352,7 +382,9 @@ public class Level implements Renderable {
 	public synchronized boolean onMousePress(MousePressedEvent e) {
 		
 		if (e.getButton() == 2) {
-			add(new Floor(editor.mouseXToScreenX(e.getX()) + editor.screenScrollX, editor.mouseYToScreenY(e.getY()) + editor.screenScrollY));
+//			add(ct.create(editor.mouseXToScreenX(e.getX()) + editor.screenScrollX, editor.mouseYToScreenY(e.getY()) + editor.screenScrollY));
+//			add(new Wall(editor.mouseXToScreenX(e.getX()) + editor.screenScrollX, editor.mouseYToScreenY(e.getY()) + editor.screenScrollY));
+			add(lof.create(editor.mouseXToScreenX(e.getX()) + editor.screenScrollX, editor.mouseYToScreenY(e.getY()) + editor.screenScrollY));
 		}
 		
 		return false;

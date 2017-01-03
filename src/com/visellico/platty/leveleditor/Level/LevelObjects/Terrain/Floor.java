@@ -1,10 +1,10 @@
 package com.visellico.platty.leveleditor.Level.LevelObjects.Terrain;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
-
+import com.farr.Events.Event;
+import com.farr.Events.EventDispatcher;
+import com.farr.Events.types.MouseMovedEvent;
+import com.farr.Events.types.MousePressedEvent;
+import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
 import com.visellico.graphics.Sprite;
 import com.visellico.platty.leveleditor.Level.Level;
@@ -28,6 +28,8 @@ public class Floor extends Terrain {
 	public static final int DEFAULT_WIDTH = 15;
 	public static final String FLOOR_TYPE_NAME = "floor";
 	
+//	public UIPanel panelFloorProps;
+	
 //	public static Comparator<Floor> floorComparator;
 	
 	
@@ -39,20 +41,20 @@ public class Floor extends Terrain {
 	 * @param y y coordinate of floor
 	 */
 	public Floor(int x, int y) {
-	
+		super(x, y, DEFAULT_WIDTH, y);
+		
 		this.serialName = FLOOR_TYPE_NAME;
 		
-		this.x = x;
-		this.y = y;
-		this.width = DEFAULT_WIDTH;
-		this.height = y;
+//		this.width = DEFAULT_WIDTH;
+//		this.height = y;
 		
 	}
 	
-	private Floor() {
+	public Floor createNew(int x, int y) {
+		System.out.println("Floor.createNew()");
+		return new Floor(x, y);
 		
 	}
-	
 	//@devnote floor does not need to implement Serialize, since it is an uncomplicated Terrain instance.
 //	/**
 //	 * Serialize a floor for saving into a file
@@ -104,7 +106,31 @@ public class Floor extends Terrain {
 		screen.renderSpriteTiled(x + width - trimWidthRight, y, trimWidthRight, height, spriteTrimRight);
 		screen.renderSpriteTiled(x, y, width, topHeight, spriteTop);
 	}
+	
+	public void update() {
+		super.update();
+		
+	}
 
+	public void onEvent(Event event) {
+		EventDispatcher dispatch = new EventDispatcher(event);
+		
+		dispatch.dispatch(Event.Type.MOUSE_PRESSED, (Event e) -> onMousePress((MousePressedEvent) event));
+		dispatch.dispatch(Event.Type.MOUSE_MOVED, (Event e) -> onMouseMove((MouseMovedEvent) event));
+		dispatch.dispatch(Event.Type.MOUSE_RELEASED, (Event e) -> onMouseRelease((MouseReleasedEvent) event));
+	}
+	
+	protected boolean onMouseMove(MouseMovedEvent e) {
+		
+		if (super.onMouseMove(e)) {
+			height = y;
+			super.valHeight.setText(Integer.toString(y));
+			return true;
+		}
+		
+		return false;
+	}
+	
 	public void init(Level l) {
 		super.init(l);
 		spriteFloor = l.levelType.spriteFloor;
@@ -115,6 +141,7 @@ public class Floor extends Terrain {
 		trimWidthLeft = spriteTrimLeft.getWidth();
 		trimWidthRight = spriteTrimRight.getWidth();
 		topHeight = spriteTop.getHeight();
+		//Nothing to add to the properties panel
 	}
 	
 }
