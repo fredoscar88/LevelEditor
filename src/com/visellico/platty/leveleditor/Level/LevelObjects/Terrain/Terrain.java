@@ -1,5 +1,6 @@
 package com.visellico.platty.leveleditor.Level.LevelObjects.Terrain;
 
+import java.awt.Color;
 import java.util.Collections;
 import java.util.List;
 
@@ -9,6 +10,8 @@ import com.farr.Events.types.MouseMovedEvent;
 import com.farr.Events.types.MousePressedEvent;
 import com.farr.Events.types.MouseReleasedEvent;
 import com.visellico.graphics.Screen;
+import com.visellico.graphics.ui.UIButton;
+import com.visellico.graphics.ui.UILabel;
 import com.visellico.graphics.ui.UIPanel;
 import com.visellico.graphics.ui.UITextField;
 import com.visellico.platty.leveleditor.Editor;
@@ -32,10 +35,12 @@ public abstract class Terrain extends LevelObject {
 	
 	//------ UIComponents
 	
-	protected UITextField valX = new UITextField(new Vector2i(10,25), 100, "").setFont(Editor.fontEditField);
-	protected UITextField valY = new UITextField(new Vector2i(10,65), 100, "").setFont(Editor.fontEditField);
-	protected UITextField valWidth = new UITextField(new Vector2i(120,25), 100, "").setFont(Editor.fontEditField);
-	protected UITextField valHeight = new UITextField(new Vector2i(120,65), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valX = new UITextField(new Vector2i(120,25), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valY = new UITextField(new Vector2i(120,65), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valWidth = new UITextField(new Vector2i(230,25), 100, "").setFont(Editor.fontEditField);
+	protected UITextField valHeight = new UITextField(new Vector2i(230,65), 100, "").setFont(Editor.fontEditField);
+	protected UIButton btnRemove = new UIButton(new Vector2i(350,25), new Vector2i(100,60), () -> {remove();}, "Delete");
+	protected UILabel lblName = new UILabel(new Vector2i(10,25),"PLACEHOLDER",Editor.fontScrollList,() -> {System.out.println("God I love these");});
 	
 	//------
 
@@ -91,18 +96,19 @@ public abstract class Terrain extends LevelObject {
 //		System.out.println(this);
 		//TODO CONDITION TO CHECK IF OBJECT IS OUTSIDE OF LEVEL BOUNDARY- IF SO, REMOVE
 		
+		height = MathUtils.parseInt(valHeight.getText());
+		height = MathUtils.clamp(height, 5, l.height - 1);
 		
-		x = MathUtils.parseInt(valX.getText());
 		y = MathUtils.parseInt(valY.getText());
+		y = MathUtils.clamp(y, height, l.height - 1);
+
 		x = MathUtils.clamp(x, 1, l.width - width);
-		y = MathUtils.clamp(y, 5, l.height - 1);
-		
+		x = MathUtils.parseInt(valX.getText());
+
 		//Width is clamped before X because X clamp depends on the width clamp
 		//And I put height before it too just because.
 		width = MathUtils.parseInt(valWidth.getText());
-		height = MathUtils.parseInt(valHeight.getText());
 		width = MathUtils.clamp(width, 2, l.width - x);
-		height = MathUtils.clamp(height, 5, y);
 		
 		if (!valX.getFocused()) valX.setText(Integer.toString(x));
 		if (!valY.getFocused()) valY.setText(Integer.toString(y));
@@ -179,7 +185,7 @@ public abstract class Terrain extends LevelObject {
 		
 		if (moveWithMouse) {
 			x = MathUtils.clamp(getLevelXFromMouse(e.getX()),1, l.width - width);
-			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),5, l.height - 1);
+			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),height, l.height - 1);
 			
 			valX.setText(Integer.toString(x));
 			valY.setText(Integer.toString(y));
@@ -205,6 +211,8 @@ public abstract class Terrain extends LevelObject {
 		panelProperties.add(valY);
 		panelProperties.add(valWidth);
 		panelProperties.add(valHeight);
+		panelProperties.add(btnRemove);
+		panelProperties.add(lblName.setColor(Color.black));
 		
 	}
 	

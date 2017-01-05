@@ -26,9 +26,7 @@ public class LevelObjectFactory {
 	}
 	
 	public LevelObject create(int x, int y) {
-		
-		System.out.println(FLOOR.toString());
-		
+				
 		switch (t) {
 		case FLOOR: return new Floor(x, y);
 		case WALL: return new Wall(x, y);

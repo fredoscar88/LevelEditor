@@ -4,6 +4,7 @@ import com.visellico.graphics.Screen;
 import com.visellico.graphics.Sprite;
 import com.visellico.platty.leveleditor.Level.Level;
 import com.visellico.rainecloud.serialization.RCObject;
+import com.visellico.util.StringUtils;
 
 /**
  * Wall object in its most basic form
@@ -99,6 +100,8 @@ public class Wall extends Terrain {
 		trimWidthLeft = spriteTrimLeft.getWidth();
 		trimWidthRight = spriteTrimRight.getWidth();
 		topHeight = spriteTop.getHeight();
+		lblName.setText(StringUtils.capOnlyFirst(this.serialName));
+		
 		//Nothing to add to the properties panel
 	}
 }

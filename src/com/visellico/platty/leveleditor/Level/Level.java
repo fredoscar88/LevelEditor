@@ -119,13 +119,18 @@ public class Level implements Renderable {
 		
 	}
 	
-	public void add(LevelObject lo) {
+	public synchronized void add(LevelObject lo) {
 		levelObjects.add(lo);
 		
 		if (lo instanceof Background) background = (Background) lo;
 		if (lo instanceof Terrain) terrains.add((Terrain) lo);
 		
 		lo.init(this);
+	}
+	
+	public synchronized void remove(LevelObject lo) {
+		levelObjects.remove(lo);
+		if (lo instanceof Terrain) terrains.remove(lo);
 	}
 	
 	//Sorts array list in this order:
@@ -142,7 +147,10 @@ public class Level implements Renderable {
 		
 		levelObjects = new ArrayList<>();
 		
+		
+		
 		levelObjects.add(background);
+		
 		for (LevelObject lo : terrains)
 			levelObjects.add(lo);
 		
@@ -157,9 +165,8 @@ public class Level implements Renderable {
 		if (lo.panelProperties != null) {
 			editor.panelProperties = lo.panelProperties;
 		} else {
-			System.out.println("whaat");
 			editor.panelProperties= new UIPanel(new Vector2i(200, 800), new Vector2i (1400, 100));
-			editor.panelProperties.setColor(0x55BAE8);	//Magic values ayy
+			editor.panelProperties.setColor(0x55BAE8);	//TODO Magic values ayy
 		}
 	}
 	

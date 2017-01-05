@@ -9,6 +9,8 @@ import com.visellico.graphics.Screen;
 import com.visellico.graphics.Sprite;
 import com.visellico.platty.leveleditor.Level.Level;
 import com.visellico.rainecloud.serialization.RCObject;
+import com.visellico.util.MathUtils;
+import com.visellico.util.StringUtils;
 
 /**
  * Floor object in its most basic form
@@ -51,7 +53,6 @@ public class Floor extends Terrain {
 	}
 	
 	public Floor createNew(int x, int y) {
-		System.out.println("Floor.createNew()");
 		return new Floor(x, y);
 		
 	}
@@ -109,6 +110,7 @@ public class Floor extends Terrain {
 	
 	public void update() {
 		super.update();
+		height = y;
 		
 	}
 
@@ -123,6 +125,7 @@ public class Floor extends Terrain {
 	protected boolean onMouseMove(MouseMovedEvent e) {
 		
 		if (super.onMouseMove(e)) {
+			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),5, l.height - 1);
 			height = y;
 			super.valHeight.setText(Integer.toString(y));
 			return true;
@@ -141,6 +144,8 @@ public class Floor extends Terrain {
 		trimWidthLeft = spriteTrimLeft.getWidth();
 		trimWidthRight = spriteTrimRight.getWidth();
 		topHeight = spriteTop.getHeight();
+		lblName.setText(StringUtils.capOnlyFirst(this.serialName));
+		
 		//Nothing to add to the properties panel
 	}
 	

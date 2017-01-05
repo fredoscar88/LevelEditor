@@ -27,6 +27,10 @@ public abstract class LevelObject implements Addable, Renderable {
 		this.l = l;
 	}
 	
+	public synchronized void remove() {
+		l.remove(this);
+	}
+	
 //	public abstract void render(Screen screen);
 //	
 //	public abstract void update();
