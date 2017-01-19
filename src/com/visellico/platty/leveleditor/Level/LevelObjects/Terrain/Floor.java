@@ -125,7 +125,10 @@ public class Floor extends Terrain {
 	protected boolean onMouseMove(MouseMovedEvent e) {
 		
 		if (super.onMouseMove(e)) {
-			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),5, l.height - 1);
+			
+			int mouseYAdjusted = getLevelYFromMouse(e.getY()) + mouseYDistFromY;
+			
+			y = MathUtils.clamp(mouseYAdjusted,5, l.height - 1);
 			height = y;
 			super.valHeight.setText(Integer.toString(y));
 			return true;

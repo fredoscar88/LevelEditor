@@ -29,6 +29,9 @@ public abstract class Terrain extends LevelObject {
 	int width, height;
 	public static final String TERRAIN_NAME = "terrain";
 	
+	//These two ints are only used/updated when moveWithMouse is true.
+	protected int mouseXDistFromX;
+	protected int mouseYDistFromY;
 	private boolean moveWithMouse = false;
 	
 	protected UIPanel panelEditor; 
@@ -155,13 +158,19 @@ public abstract class Terrain extends LevelObject {
 	
 	protected boolean onMousePress(MousePressedEvent e) {
 
-		int levelX = l.editor.mouseXToScreenX(e.getX()) + l.editor.screenScrollX;
-		int levelY = l.editor.mouseYToScreenY(e.getY()) + l.editor.screenScrollY;
+//		int levelX = l.editor.mouseXToScreenX(e.getX()) + l.editor.screenScrollX;
+//		int levelY = l.editor.mouseYToScreenY(e.getY()) + l.editor.screenScrollY;
+		int levelX = getLevelXFromMouse(e.getX());
+		int levelY = getLevelYFromMouse(e.getY());
 		
 		if (levelX >= x && levelX < x + width) {
 			if (levelY <= y && levelY > y - height) {
 				
 				moveWithMouse = true;
+				
+				mouseXDistFromX = levelX - x;	//Both of these should return the correct difference. Im starting to think I need a "difference" math function!
+				mouseYDistFromY = y - levelY;	//It's a pain in the ass to have to use a different standard for Y because it is inverted.
+//				System.out.println(mouseXDistFromX + " " + mouseYDistFromY);
 				
 				l.requestSelected(this);
 				
@@ -175,7 +184,7 @@ public abstract class Terrain extends LevelObject {
 	protected boolean onMouseRelease(MouseReleasedEvent e) {
 		if (moveWithMouse) {
 			moveWithMouse = false;
-			l.sort();
+			l.sort();	//Restacks all of the level objects so we can't accidentally hide them behind other objects
 			return true;
 		}
 		return false;
@@ -184,9 +193,17 @@ public abstract class Terrain extends LevelObject {
 	protected boolean onMouseMove(MouseMovedEvent e) {
 		
 		if (moveWithMouse) {
-			x = MathUtils.clamp(getLevelXFromMouse(e.getX()),1, l.width - width);
-			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),height, l.height - 1);
+//			int mouseXInLevel = getLevelXFromMouse(e.getX());
+//			int mouseYInLevel = getLevelXFromMouse(e.getY());
 			
+			int mouseXAdjusted = getLevelXFromMouse(e.getX()) - mouseXDistFromX;
+			int mouseYAdjusted = getLevelYFromMouse(e.getY()) + mouseYDistFromY;	//Classic example of the problems of inverting one coordinate thingy.
+			
+//			x = MathUtils.clamp(getLevelXFromMouse(e.getX()),1, l.width - width);
+//			y = MathUtils.clamp(getLevelYFromMouse(e.getY()),height, l.height - 1);
+			x = MathUtils.clamp(mouseXAdjusted,1, l.width - width);
+			y = MathUtils.clamp(mouseYAdjusted,height, l.height - 1);
+						
 			valX.setText(Integer.toString(x));
 			valY.setText(Integer.toString(y));
 			return true;
