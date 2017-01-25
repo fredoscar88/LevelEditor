@@ -61,7 +61,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	
 	private JFrame frame;
 	private static final String TITLE = "Platty the Platformer | Level Editor";
-	private static final String VERSION = "dev 0.0";
+	private static final String VERSION = "dev 1.0";
 	private boolean isDevVersion = true;
 	public static Font fontScrollList;
 	public static Font fontEditField = new Font("Times New Roman", Font.PLAIN, 12);

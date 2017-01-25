@@ -18,7 +18,6 @@ import com.visellico.platty.leveleditor.Renderable;
 import com.visellico.platty.leveleditor.Level.LevelObjects.Background;
 import com.visellico.platty.leveleditor.Level.LevelObjects.LevelObject;
 import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Terrain;
-import com.visellico.platty.leveleditor.Level.LevelObjects.Terrain.Wall;
 import com.visellico.rainecloud.serialization.RCDatabase;
 import com.visellico.rainecloud.serialization.RCField;
 import com.visellico.rainecloud.serialization.RCObject;
