@@ -1,8 +1,5 @@
 package com.visellico.platty.leveleditor;
 
-import static com.visellico.platty.leveleditor.Level.LevelObjectFactory.Type.FLOOR;
-import static com.visellico.platty.leveleditor.Level.LevelObjectFactory.Type.WALL;
-
 import java.awt.Canvas;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -117,6 +114,7 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	//TODO this constructor does an awful lot for a constructor.
 	//	A lot of initialization things, but it is beginning to feel more like something that would run at the start... not when constructed!
 	//	ALSO TODO editor does NOT have support to edit multiple levels at once! shame really.
+	//TODO Add rename feature, and make it a button on the UI
 	public Editor() {
 		
 		Level.initialize();
@@ -543,12 +541,14 @@ public class Editor extends Canvas implements Runnable, EventListener {
 	public boolean onKeyType(KeyTypedEvent e) {
 		
 		//Shortcuts!
+		//Though come to think of it, I could just use 'character' instead of.. this. But it's a good demonstration, to me atleast, to see their short values,
+		//	and also how I could derive their short values using the system print statement below.
 		final char charShftR	= '\u0052';
 		final char charCtrlS	= '\u0013';
 		final char charCtrlN	= '\u000E';
 		final char charCtrlL	= '\u000C';
-		final char charW		= '\u0077';
-		final char charF		= '\u0066';
+//		final char charW		= '\u0077';
+//		final char charF		= '\u0066';
 		
 //		System.out.printf("%04X\n", (short) e.getKeyChar());
 		
@@ -574,12 +574,12 @@ public class Editor extends Canvas implements Runnable, EventListener {
 			loadThreadCreate();
 			loadThreadLol.start();
 			return true;
-		case (charW):
-			Level.lof.setType(WALL);
-			return true;
-		case (charF):
-			Level.lof.setType(FLOOR);
-			return true;
+//		case (charW):
+//			Level.lof.setType(WALL);
+//			return true;
+//		case (charF):
+//			Level.lof.setType(FLOOR);
+//			return true;
 		default: return false;
 		}
 		
